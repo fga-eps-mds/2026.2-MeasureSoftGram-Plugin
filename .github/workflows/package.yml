@@ -1,0 +1,74 @@
+name: Package & Release Extension (.vsix)
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+      - 'v*'
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Executar em modo dry-run (não cria release nem anexa assets públicos)'
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+jobs:
+  package-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Instalar dependências (extensão e webview)
+        run: npm run install:all
+
+      - name: Compilar extensão TypeScript
+        run: npm run compile
+
+      - name: Compilar frontend React da webview
+        run: npm run build:webview
+
+      - name: Rodar testes unitários da extensão
+        run: npm run test:unit
+
+      - name: Rodar testes da webview
+        run: cd webview-ui && npm run test:run
+
+      - name: Empacotar extensão VS Code (.vsix)
+        run: npx --yes @vscode/vsce package --no-git-tag-version
+
+      - name: Identificar artefato gerado
+        id: get_vsix
+        run: |
+          VSIX_NAME=$(ls *.vsix | head -n 1)
+          echo "VSIX gerado: $VSIX_NAME ($(ls -lh "$VSIX_NAME" | awk '{print $5}'))"
+          echo "vsix_file=$VSIX_NAME" >> "$GITHUB_OUTPUT"
+
+      - name: Upload do pacote .vsix como artefato do workflow
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ${{ steps.get_vsix.outputs.vsix_file }}
+          path: ${{ steps.get_vsix.outputs.vsix_file }}
+
+      - name: Anexar .vsix à GitHub Release
+        if: (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release') && inputs.dry_run != true
+        uses: softprops/action-gh-release@c95fe1489396fe8a9eb872386f83bc9b37e28b6a # v2.0.8
+        with:
+          generate_release_notes: true
+          files: ${{ steps.get_vsix.outputs.vsix_file }}

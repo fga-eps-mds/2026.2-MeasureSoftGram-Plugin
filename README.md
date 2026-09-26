@@ -105,6 +105,29 @@ Trata-se de um modelo hierárquico, multinível, multivariado e multidimensional
 
 ---
 
+## Empacotamento e Release de Produção
+
+A extensão do MeasureSoftGram para o VS Code é distribuída oficialmente no formato `.vsix` anexada aos releases do GitHub:
+
+### Automação de Release (.vsix):
+1. **Ambiente de Produção (`main`):**
+   - A branch estável de produção é a `main`.
+   - O workflow `.github/workflows/package.yml` é disparado automaticamente em tags semânticas (ex: `v1.0.3`) ou na publicação de uma nova Release na `main`.
+2. **Etapas de compilação e empacotamento:**
+   - O job compila o código TypeScript da extensão (`npm run compile`), o frontend React da webview (`npm run build:webview`), executa as suítes de teste e gera o binário `.vsix` via `@vscode/vsce package`.
+   - O arquivo `.vsix` é anexado automaticamente como Release Asset no GitHub Release correspondente e disponibilizado como artefato para download.
+3. **Instalação manual via arquivo `.vsix`:**
+   - Faça o download do arquivo `measuresoftgram-<versao>.vsix` na aba [Releases](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/releases).
+   - Instale diretamente no VS Code via terminal:
+     ```bash
+     code --install-extension measuresoftgram-<versao>.vsix
+     ```
+   - Ou pela interface do VS Code: acesse a aba **Extensions** (`Ctrl+Shift+X`) → menu `...` (Views and More Actions) → **Install from VSIX...**.
+4. **Execução em modo Dry-Run:**
+   - O workflow suporta execução manual via **Run workflow** (`workflow_dispatch`) com a flag `dry_run: true` para testar todo o empacotamento sem publicar assets na release pública.
+
+---
+
 <div align="center">
 
 [Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Docs](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin) · Licença AGPL v3
