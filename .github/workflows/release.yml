@@ -4,154 +4,62 @@ on:
   push:
     branches:
       - main
-    tags:
-      - 'v*.*.*'
-      - 'v*'
-  workflow_dispatch:
-    inputs:
-      dry_run:
-        description: 'Executar em modo dry-run (não publica no marketplace nem cria release de produção)'
-        required: false
-        default: false
-        type: boolean
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  build-and-release:
+  release-please:
     runs-on: ubuntu-latest
-    env:
-      VSCE_PAT: ${{ secrets.VSCE_PAT }}
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      # 1. Google Release Please analisa commits convencionais na main e gerencia o PR de release e a Tag oficial
+      - uses: googleapis/release-please-action@a02a34c4d625f3be7cf733303cb8287f4c0c5de4 # v4.2.0
+        id: release
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+
+      # 2. Quando o PR de release é mergeado na main, steps abaixo compilam e publicam os artefatos oficiais
+      - name: Checkout do código pós-release
+        if: ${{ steps.release.outputs.release_created }}
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Setup Node.js 20
+        if: ${{ steps.release.outputs.release_created }}
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: 20.x
           cache: 'npm'
 
       - name: Instalar dependências (extensão e webview)
+        if: ${{ steps.release.outputs.release_created }}
         run: npm run install:all
 
-      - name: Validar linting
-        run: npm run lint
-
-      - name: Executar testes unitários da extensão
-        run: npm run test:unit
-
-      - name: Executar testes da webview
-        run: cd webview-ui && npm run test:run
-
-      - name: Auto-Bump de Versão para Estável (se vier pré-release da develop)
-        id: bump
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && inputs.dry_run != true
-        run: |
-          CURRENT_VERSION=$(node -p "require('./package.json').version")
-          echo "Versao atual em package.json: $CURRENT_VERSION"
-          
-          # Se contiver sufixo de pré-release (-rc, -alpha, etc), converte para versão estável
-          if [[ "$CURRENT_VERSION" =~ ^([0-9]+\.[0-9]+\.[0-9]+) ]]; then
-            STABLE_VERSION="${BASH_REMATCH[1]}"
-            if [ "$CURRENT_VERSION" != "$STABLE_VERSION" ]; then
-              echo "Detectada versao pre-release ($CURRENT_VERSION). Realizando bump automatico para estavel ($STABLE_VERSION)..."
-              npm version "$STABLE_VERSION" --no-git-tag-version --allow-same-version
-              
-              # Recompila com os metadados estáveis
-              npm run compile
-              npm run build:webview
-              
-              git config user.name "github-actions[bot]"
-              git config user.email "github-actions[bot]@users.noreply.github.com"
-              git add package.json
-              git commit -m "chore(release): bump versao estavel para $STABLE_VERSION [skip ci]"
-              git push origin main
-              
-              FINAL_VERSION="$STABLE_VERSION"
-            else
-              FINAL_VERSION="$CURRENT_VERSION"
-            fi
-          else
-            FINAL_VERSION="$CURRENT_VERSION"
-          fi
-          
-          echo "final_version=$FINAL_VERSION" >> $GITHUB_OUTPUT
-          echo "tag_name=v$FINAL_VERSION" >> $GITHUB_OUTPUT
-
       - name: Compilar extensão e webview
+        if: ${{ steps.release.outputs.release_created }}
         run: |
           npm run compile
           npm run build:webview
 
       - name: Empacotar extensão VS Code (.vsix)
-        run: npx --yes @vscode/vsce package --no-git-tag-version
+        if: ${{ steps.release.outputs.release_created }}
+        run: npx --yes @vscode/vsce package --no-git-tag-version -o "measuresoftgram-${{ steps.release.outputs.version }}.vsix"
 
-      - name: Identificar artefato gerado
-        id: get_vsix
-        run: |
-          VSIX_NAME=$(ls *.vsix | head -n 1)
-          if [ -z "$VSIX_NAME" ]; then
-            echo "::error::Nenhum arquivo .vsix encontrado!"
-            exit 1
-          fi
-          echo "VSIX gerado: $VSIX_NAME ($(ls -lh "$VSIX_NAME" | awk '{print $5}'))"
-          echo "vsix_file=$VSIX_NAME" >> "$GITHUB_OUTPUT"
-
-      - name: Upload do pacote .vsix como artefato do workflow
-        uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.6.1
-        with:
-          name: ${{ steps.get_vsix.outputs.vsix_file }}
-          path: ${{ steps.get_vsix.outputs.vsix_file }}
-
-      - name: Criar Tag Semântica e Atualizar Tag Flutuante
-        if: inputs.dry_run != true
-        run: |
-          TAG_NAME="${{ steps.bump.outputs.tag_name }}"
-          if [ -z "$TAG_NAME" ]; then
-            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-              TAG_NAME="${GITHUB_REF#refs/tags/}"
-            else
-              TAG_NAME="v$(node -p "require('./package.json').version")"
-            fi
-          fi
-          
-          MAJOR_TAG=$(echo "$TAG_NAME" | cut -d. -f1)
-          if [[ "$MAJOR_TAG" != v* ]]; then
-            MAJOR_TAG="v$MAJOR_TAG"
-          fi
-
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          echo "Criando/atualizando tag semantica $TAG_NAME..."
-          git tag -fa "$TAG_NAME" -m "Release $TAG_NAME"
-          git push origin "$TAG_NAME" --force
-
-          echo "Atualizando tag flutuante $MAJOR_TAG..."
-          git tag -fa "$MAJOR_TAG" -m "Atualização da tag flutuante $MAJOR_TAG para $TAG_NAME"
-          git push origin "$MAJOR_TAG" --force
-          
-          echo "RELEASE_TAG=$TAG_NAME" >> $GITHUB_ENV
-
-      - name: Criar ou atualizar GitHub Release
-        if: inputs.dry_run != true
+      - name: Anexar .vsix à GitHub Release oficial
+        if: ${{ steps.release.outputs.release_created }}
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb872386f83bc9b37e28b6a # v2.0.8
         with:
-          tag_name: ${{ env.RELEASE_TAG }}
-          generate_release_notes: true
-          files: ${{ steps.get_vsix.outputs.vsix_file }}
+          tag_name: ${{ steps.release.outputs.tag_name }}
+          files: measuresoftgram-${{ steps.release.outputs.version }}.vsix
 
-      - name: Publicar no VS Code Marketplace
-        if: inputs.dry_run != true && env.VSCE_PAT != ''
+      - name: Publicar no Visual Studio Marketplace
+        if: ${{ steps.release.outputs.release_created && secrets.VSCE_PAT != '' }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
           echo "Publicando no VS Code Marketplace..."
-          npx --yes @vscode/vsce publish -p "${{ secrets.VSCE_PAT }}" --packagePath "${{ steps.get_vsix.outputs.vsix_file }}"
+          npx --yes @vscode/vsce publish -p "$VSCE_PAT" --packagePath "measuresoftgram-${{ steps.release.outputs.version }}.vsix"
 
-      - name: Notificação de Marketplace ignorado
-        if: inputs.dry_run == true || env.VSCE_PAT == ''
-        run: echo "::notice::Publicação no VS Code Marketplace ignorada (dry_run ativo ou secret VSCE_PAT não configurada)."
+      - name: Notificação de Marketplace ignorado (Sem segredo configurado)
+        if: ${{ steps.release.outputs.release_created && secrets.VSCE_PAT == '' }}
+        run: echo "::notice::Publicação no VS Code Marketplace ignorada (secret VSCE_PAT não configurado no repositório)."
