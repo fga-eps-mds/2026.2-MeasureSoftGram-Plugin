@@ -18,6 +18,7 @@ webview-ui/tsconfig*
 tsconfig.json
 .mocharc*
 coverage/**
+webview-ui/coverage/**
 .github/**
 .idea/**
 .vscode-test.mjs
