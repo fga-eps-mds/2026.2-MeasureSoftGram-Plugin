@@ -10,7 +10,7 @@
 &nbsp;
 [![Site Oficial](https://img.shields.io/badge/Site-MeasureSoftGram-green.svg)](https://github.com/fga-eps-mds/MeasureSoftGram-Service)
 
-[Instalar Extensão](#instalação) · [Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Documentação](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin)
+[Instalar Extensão](#instalação) · [Site Oficial](https://fga-eps-mds.github.io/MeasureSoftGram-Docs/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Documentação](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin)
 
 </div>
 
@@ -107,6 +107,6 @@ Trata-se de um modelo hierárquico, multinível, multivariado e multidimensional
 
 <div align="center">
 
-[Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Docs](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin) · Licença AGPL v3
+[Site Oficial](https://fga-eps-mds.github.io/MeasureSoftGram-Docs/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Docs](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin) · Licença AGPL v3
 
 </div>

@@ -135,7 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     textTransform: 'uppercase',
                     marginBottom: 6,
                 }}>
-                    <i className="ti ti-trophy" style={{marginRight: 4}}/> Nota do Produto
+                    <i className="ti ti-trophy" style={{marginRight: 4}}/> TSQMI
                 </div>
 
                 <div className="score-box">
