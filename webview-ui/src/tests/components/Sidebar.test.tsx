@@ -49,6 +49,12 @@ describe('Sidebar', () => {
             render(<Sidebar {...DEFAULT_PROPS}/>);
             expect(screen.getByText(/Análise multidimensional/)).toBeInTheDocument();
         });
+
+        it('deve exibir o rótulo "TSQMI" no lugar do rótulo antigo "Nota do Produto"', () => {
+            render(<Sidebar {...DEFAULT_PROPS}/>);
+            expect(screen.getAllByText('TSQMI').length).toBeGreaterThan(0);
+            expect(screen.queryByText('Nota do Produto')).not.toBeInTheDocument();
+        });
     });
 
     describe('seletor de repositório', () => {
