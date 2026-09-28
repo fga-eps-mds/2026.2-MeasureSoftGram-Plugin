@@ -5,7 +5,7 @@
   "version": "1.0.2",
   "publisher": "MeasureSoftGram",
   "license": "AGPL-3.0",
-  "homepage": "https://msgram.lappis.rocks/",
+  "homepage": "https://fga-eps-mds.github.io/MeasureSoftGram-Docs/",
   "repository": {
     "type": "git",
     "url": "https://github.com/fga-eps-mds/MeasureSoftGram-Plugin"
@@ -37,7 +37,6 @@
     "static analysis",
     "sonarqube",
     "release quality",
-    "lappis",
     "unb"
   ],
   "activationEvents": [],
