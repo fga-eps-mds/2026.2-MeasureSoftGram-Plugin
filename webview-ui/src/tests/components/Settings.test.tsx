@@ -2,7 +2,7 @@ import {fireEvent, render, screen} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import type {SettingsForUi} from '../../types';
 
-const {mockPostMessage, mockGetState, mockSetState} = vi.hoisted(() => {
+const {mockGetState, mockSetState} = vi.hoisted(() => {
     const mockPostMessage = vi.fn();
     const mockGetState = vi.fn(() => ({}));
     const mockSetState = vi.fn();
@@ -13,7 +13,7 @@ const {mockPostMessage, mockGetState, mockSetState} = vi.hoisted(() => {
         setState: mockSetState,
     }));
 
-    return {mockPostMessage, mockGetState, mockSetState};
+    return {mockGetState, mockSetState};
 });
 
 const {SettingsView} = await import('../../components/SettingsView');
