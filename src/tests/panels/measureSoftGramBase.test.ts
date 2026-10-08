@@ -135,6 +135,11 @@ class TestableBase extends MeasureSoftGramBase {
         return super.handleMessage(msg, fr, fs, ws, fsys, win);
     }
     public getSettings() { return this._settings!; }
+    public getWebviewContent() { return this._getWebviewContent(this.webviewInstance as any, { fsPath: '/ext' } as any); }
+    public setGrafanaFetchers(list: any, detail: any) {
+        (this as any)._fetchGrafanaDashboards = list;
+        (this as any)._fetchGrafanaDashboard = detail;
+    }
     public getContext()  { return this._context; }
     public getSelectedRepo() { return this._selectedRepo; }
 }
@@ -513,5 +518,57 @@ suite('MeasureSoftGramBase', () => {
 
         assert.strictEqual(handled, true);
         assert.deepStrictEqual(shown, ['Preencha o token']);
+    });
+
+    // ── US4: CSP e validação do endereço do Grafana ───────────────────────
+
+    test('CSP libera font-src para o cspSource e não aceita frames http', () => {
+        const base = new TestableBase(makeExtensionContext());
+        const html = base.getWebviewContent();
+        const csp = html.match(/Content-Security-Policy" content="([^"]+)"/)?.[1] ?? '';
+        assert.ok(csp.includes("default-src 'none'"));
+        assert.ok(csp.includes('font-src vscode-resource:'), csp);
+        assert.ok(csp.includes('frame-src https:'), csp);
+        assert.ok(!csp.includes('frame-src http:'), csp);
+        assert.ok(!/frame-src[^;]*\bhttp:/.test(csp), csp);
+    });
+
+    async function loadWithGrafanaUrl(url: string, allowedHosts: string[] = []) {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        const base = new TestableBase(ctx);
+        // grafanaAllowedHosts vem da configuração
+        const deps = (base as any)._settingsDeps;
+        await deps.getConfiguration().update('grafanaAllowedHosts', allowedHosts);
+        base.setGrafanaFetchers(
+            async () => [],
+            async () => ({ dashboard_uid: 'u', title: 'T', grafana_url: url, product_id: 1, repository: null }),
+        );
+        await base.handleMessage({ command: 'request_score' });
+        base.webviewInstance.posted.length = 0;
+        await base.handleMessage({ command: 'request_grafana_dashboard', uid: 'u' });
+        return base.webviewInstance.posted;
+    }
+
+    test('grafana_dashboard_loaded só é emitido para URL https', async () => {
+        const ok = await loadWithGrafanaUrl('https://grafana.example/d/x');
+        assert.ok(ok.some((m: any) => m.command === 'grafana_dashboard_loaded' && m.url === 'https://grafana.example/d/x'));
+
+        const bad = await loadWithGrafanaUrl('http://grafana.example/d/x');
+        assert.ok(!bad.some((m: any) => m.command === 'grafana_dashboard_loaded'));
+        const err = bad.find((m: any) => m.command === 'grafana_error');
+        assert.ok(/https/i.test(err?.message ?? ''), err?.message);
+    });
+
+    test('host fora de grafanaAllowedHosts é recusado com "não permitido"', async () => {
+        const posted = await loadWithGrafanaUrl('https://outro.example/d/x', ['grafana.example']);
+        assert.ok(!posted.some((m: any) => m.command === 'grafana_dashboard_loaded'));
+        const err = posted.find((m: any) => m.command === 'grafana_error');
+        assert.ok(/não permitido/i.test(err?.message ?? ''), err?.message);
+        assert.ok((err?.message ?? '').includes('outro.example'));
+    });
+
+    test('host dentro de grafanaAllowedHosts é aceito (comparação sem maiúsculas)', async () => {
+        const posted = await loadWithGrafanaUrl('https://Grafana.Example/d/x', ['grafana.example']);
+        assert.ok(posted.some((m: any) => m.command === 'grafana_dashboard_loaded'));
     });
 });
