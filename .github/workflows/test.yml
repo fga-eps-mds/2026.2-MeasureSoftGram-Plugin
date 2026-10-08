@@ -5,6 +5,7 @@ on:
   pull_request:
     branches: [ main, develop ]
   workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -12,18 +13,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - name: Instalar dependências
-        run: npm run install:all
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            webview-ui/package-lock.json
+
+      - name: Instalar dependências da extensão
+        run: npm ci
+
+      - name: Instalar dependências da interface
+        run: npm ci
+        working-directory: webview-ui
+
+      - name: Lint da extensão
+        run: npm run lint
+
+      - name: Lint da interface
+        run: npm run lint:webview
+
       - name: Compilar extensão
         run: npm run compile
-      - name: Rodar testes da extensão com cobertura
+
+      - name: Build da interface
+        run: npm run build:webview
+
+      - name: Testes da extensão com cobertura
         run: npm run test:coverage
-      - name: Rodar testes da webview com cobertura
-        run: cd webview-ui && npm run test:coverage
+
+      - name: Testes da interface com cobertura
+        run: npm run test:coverage
+        working-directory: webview-ui
+
+      - name: Teste de integração em VS Code real
+        run: xvfb-run -a npm run test:integration
+
       - name: Scanner do SonarCloud
         uses: SonarSource/sonarqube-scan-action@v6
         env:
