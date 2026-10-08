@@ -16,13 +16,13 @@ export interface ActivatorContext {
  * Registra comandos, barra lateral e barra de status. Recebe as classes
  * como parâmetro para ser testável sem o módulo `vscode`.
  */
-export function activate(
+export function activate<S>(
     context: ActivatorContext,
     vscode: ActivatorVscode,
     Panel: { render: (ctx: any, statusBar: any) => void },
-    Sidebar: { new(ctx: any, statusBar: any): any; viewType: string },
+    Sidebar: { new(ctx: any, statusBar: any): S; viewType: string },
     StatusBar: { new(): { dispose: () => void } },
-) {
+): { sidebar: S } {
     const statusBar = new StatusBar();
     context.subscriptions.push(statusBar);
 
@@ -36,6 +36,7 @@ export function activate(
             webviewOptions: {retainContextWhenHidden: true},
         }),
     );
+
 
     context.subscriptions.push(
         vscode.commands.registerCommand('msgram.openSettings', async () => {
@@ -60,4 +61,6 @@ export function activate(
             await vscode.window.showInformationMessage?.('Tokens removidos. Configure novamente em Settings.');
         }),
     );
+
+    return {sidebar};
 }

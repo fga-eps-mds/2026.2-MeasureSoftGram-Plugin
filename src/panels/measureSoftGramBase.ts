@@ -1,4 +1,4 @@
-import {Disposable, ExtensionContext, Uri, Webview, window, workspace} from 'vscode';
+import {Disposable, Event, EventEmitter, ExtensionContext, Uri, Webview, window, workspace} from 'vscode';
 import * as defaultFs from 'fs/promises';
 import * as path from 'path';
 import {getNonce, getUri} from '../utilities/utilities';
@@ -78,6 +78,9 @@ export abstract class MeasureSoftGramBase {
     protected _orgNameOverride: string | null = null;
     protected readonly _settingsDeps: SettingsDeps;
     protected readonly _disposables: Disposable[] = [];
+    private readonly _onDidPost = new EventEmitter<ExtensionMessage>();
+    /** Toda mensagem enviada à interface; usado pelo teste de integração. */
+    public readonly onDidPost: Event<ExtensionMessage> = this._onDidPost.event;
     /** Injetáveis nos testes. */
     protected _fetchGrafanaDashboards = defaultFetchGrafanaDashboards;
     protected _fetchGrafanaDashboard = defaultFetchGrafanaDashboard;
@@ -104,10 +107,15 @@ export abstract class MeasureSoftGramBase {
         return this._actionState;
     }
 
+    public get hasWebview(): boolean {
+        return this._webview !== undefined;
+    }
+
     public dispose(): void {
         while (this._disposables.length) {
             this._disposables.pop()?.dispose();
         }
+        this._onDidPost.dispose();
     }
 
     // ── Hooks (subclasses podem estender; a base já cuida da status bar) ───
@@ -147,6 +155,7 @@ export abstract class MeasureSoftGramBase {
 
     protected post(message: ExtensionMessage): void {
         this._webview?.postMessage(message);
+        this._onDidPost.fire(message);
     }
 
     // ── Configurações ──────────────────────────────────────────────────────

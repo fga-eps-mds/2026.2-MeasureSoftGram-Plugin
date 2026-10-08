@@ -2,7 +2,7 @@
   "name": "measuresoftgram",
   "displayName": "MeasureSoftGram",
   "description": "Análise multidimensional da qualidade de software, direto no VS Code.",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "publisher": "MeasureSoftGram",
   "license": "AGPL-3.0",
   "homepage": "https://msgram.lappis.rocks/",
@@ -175,8 +175,13 @@
     "@vscode/test-electron": "^3.1.0",
     "c8": "^10.1.3",
     "eslint": "^9.39.3",
-    "mocha": "^11.7.6",
+    "mocha": "^12.0.3",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.56.1"
+  },
+  "overrides": {
+    "@vscode/test-cli": {
+      "mocha": "$mocha"
+    }
   }
 }
