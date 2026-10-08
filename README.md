@@ -105,6 +105,26 @@ Executa a action que publica a qualidade de software direto no MeasureSoftGram, 
 
 ---
 
+## Desenvolvimento e release
+
+```bash
+npm ci && (cd webview-ui && npm ci)   # dependências fixadas pelos lockfiles
+npm run lint && npm run lint:webview  # zero erros nos dois pacotes
+npm run test:unit                     # extensão, com o 'vscode' simulado
+npm run test:integration              # abre um VS Code real e ativa a extensão
+npm run build:webview && npm run compile
+npm run package                       # gera measuresoftgram-<versão>.vsix
+```
+
+O `.vsix` sai com a interface compilada e sem relatórios de cobertura. Para publicar:
+
+1. `npm version minor` (ou `patch`) atualiza o `package.json` e cria a tag `vX.Y.Z`.
+2. `git push --follow-tags` dispara o workflow **Package & Release Extension**, que confere que a versão bate com a tag, roda lint e testes, empacota, anexa o `.vsix` à release do GitHub e publica no Marketplace (se o secret `VSCE_PAT` existir).
+
+Os secrets que o CI precisa estão descritos em [docs/SECRETS.md](docs/SECRETS.md).
+
+---
+
 ## Sobre o modelo de qualidade
 
 Trata-se de um modelo hierárquico, multinível, multivariado e multidimensional. O MeasureSoftGram usa um metamodelo algébrico (original), que representa a qualidade de produto de software no espaço R_N. Utiliza a combinação do [produto de Hadamard](https://en.wikipedia.org/wiki/Hadamard_product_(matrices)) com [norma de Frobenius](https://en.wikipedia.org/wiki/Matrix_norm#Frobenius_norm), para agregar métricas e medidas em indicadores multidimensionais de qualidade. O resultado é um indicador multidimensional, contínuo, rastreável ao longo do tempo e que expressa a percepção quantitativa da qualidade de software.
