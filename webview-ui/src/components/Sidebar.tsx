@@ -1,5 +1,5 @@
 import React from 'react';
-import type {RepoItem, ScoreData, TabName} from '../types';
+import type {OrgItem, RepoItem, ScoreData, TabName} from '../types';
 import {getCharStatus, getStatusColor} from '../utils/helpers';
 
 interface SidebarProps {
@@ -11,6 +11,9 @@ interface SidebarProps {
     onSelectRepo: (repoPk: number) => void;
     activeTab: TabName;
     onShowTab: (tab: TabName) => void;
+    organizations?: OrgItem[];
+    selectedOrgPk?: number | null;
+    onSelectOrg?: (orgPk: number) => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -21,6 +24,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                                                     selectedRepoPk,
                                                     onSelectRepo,
                                                     onShowTab,
+                                                    organizations = [],
+                                                    selectedOrgPk = null,
+                                                    onSelectOrg,
                                                 }) => {
     const renderCharsContent = (): React.ReactNode => {
         if (scoreLoading || !scoreData) {
@@ -94,6 +100,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Análise multidimensional da qualidade de software
                 </div>
             </div>
+
+            {/* Seletor de organização: só quando a conta tem mais de uma */}
+            {organizations.length > 1 && (
+                <div style={{marginTop: 10}}>
+                    <div className="slbl">
+                        <i className="ti ti-building"/> Organização
+                    </div>
+                    <select
+                        id="org-select"
+                        className="sselect"
+                        value={selectedOrgPk ?? ''}
+                        onChange={(e) => onSelectOrg?.(Number(e.target.value))}
+                    >
+                        {organizations.map((o) => (
+                            <option key={o.id} value={o.id}>{o.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
 
             {/* Seletor de repositório */}
             {repos.length > 0 && (

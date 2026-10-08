@@ -32,7 +32,8 @@ function makeStatusBar() {
         setError()            { this.errorCalled = true; },
         setNoData()           { this.noDataCalled = true; },
         setScore(s: number)   { this.lastScore = s; },
-        setNotConfigured()    {},
+        notConfiguredCalled: false,
+        setNotConfigured()    { this.notConfiguredCalled = true; },
         dispose()             { this.disposeCalled = true; },
     };
 }
@@ -61,9 +62,10 @@ function makeExtensionContext(overrides: Partial<{ serviceUrl: string; productNa
     const ws: Record<string, string> = {};
     if (overrides.serviceUrl !== undefined) { ws['msgram.serviceUrl'] = overrides.serviceUrl; }
     if (overrides.productName !== undefined) { ws['msgram.productName'] = overrides.productName; }
+    if (overrides.productName === undefined) { ws['msgram.productName'] = 'measuresoftgram'; }
     const ctx = {
         workspaceState: makeWorkspaceState(ws),
-        secrets: makeSecrets(),
+        secrets: makeSecrets('tok'),
         extensionUri: { fsPath: '/ext', with: () => ({}) } as any,
         subscriptions: [],
     } as any;
@@ -89,7 +91,7 @@ function makeSettingsDepsFor(ctx: any): SettingsDeps {
 }
 
 function makeFetchRepositories(repos: any[] = [{ id: 1, name: 'repo-a' }]) {
-    return async () => ({ orgPk: 10, productPk: 20, repos });
+    return async () => ({ orgPk: 10, orgName: 'org', organizations: [{ id: 10, name: 'org' }], productPk: 20, productName: 'P', repos });
 }
 
 function makeFetchScoreForRepo(result: any = { score: 0.85, noData: false }) {

@@ -13,14 +13,16 @@ import {
 } from '../services/msgramApi';
 import {HttpError} from '../services/httpClient';
 import {
+    clearSecret,
     FullSettings,
+    isConfigured,
     loadSettings,
     loadSettingsForUi,
     makeSettingsDeps,
     saveSettings,
     SettingsDeps,
 } from '../config/settings';
-import type {ExtensionMessage, PanelMessage, ScoreErrorKind, SettingsPayload} from './messages';
+import type {ExtensionMessage, PanelMessage, ScoreErrorKind, SecretKey, SettingsPayload} from './messages';
 import type {MsgramStatusBar} from '../statusbar/msgramStatusBar';
 
 export type FetchRepositoriesFn = typeof defaultFetchRepositories;
@@ -71,6 +73,8 @@ export abstract class MeasureSoftGramBase {
     protected _selectedRepo: RepoItem | null = null;
     protected _loadState: LoadState = 'not_configured';
     protected _actionState: ActionRunState = 'idle';
+    /** Organização escolhida pela pessoa nesta sessão (sobrepõe msgram.organizationName). */
+    protected _orgNameOverride: string | null = null;
     protected readonly _settingsDeps: SettingsDeps;
     protected readonly _disposables: Disposable[] = [];
 
@@ -156,7 +160,26 @@ export abstract class MeasureSoftGramBase {
     }
 
     protected async _requireSettings(): Promise<FullSettings> {
-        return this._settings ?? (await this._loadPersistedSettings());
+        const settings = this._settings ?? (await this._loadPersistedSettings());
+        return this._orgNameOverride ? {...settings, organizationName: this._orgNameOverride} : settings;
+    }
+
+    /**
+     * Recarrega as configurações, avisa a interface e, se faltar algo,
+     * emite not_configured. Devolve true quando está tudo configurado.
+     */
+    protected async _refreshSettingsAndGate(): Promise<boolean> {
+        const settings = await this._loadPersistedSettings();
+        await this._postSettingsLoaded();
+        const missing = isConfigured(settings);
+        if (missing.length) {
+            this._context = null;
+            this._selectedRepo = null;
+            this.onNotConfigured();
+            this.post({command: 'not_configured', missing});
+            return false;
+        }
+        return true;
     }
 
     // ── Carregamento de dados ──────────────────────────────────────────────
@@ -185,6 +208,11 @@ export abstract class MeasureSoftGramBase {
             const settings = await this._requireSettings();
             this._context = await fetchRepos(settings, this.logger());
             const repos = this._context.repos;
+            this.post({
+                command: 'orgs_loaded',
+                organizations: this._context.organizations ?? [],
+                selectedOrgPk: this._context.orgPk,
+            });
             this.post({command: 'repos_loaded', repos});
 
             if (!repos.length) {
@@ -321,10 +349,40 @@ export abstract class MeasureSoftGramBase {
 
         switch (message.command) {
             case 'request_score':
-                await this._loadPersistedSettings();
-                await this._postSettingsLoaded();
+                if (await this._refreshSettingsAndGate()) {
+                    await this._loadReposAndScore(fetchRepos, fetchScore);
+                }
+                return true;
+
+            case 'retry':
+                if (await this._refreshSettingsAndGate()) {
+                    await this._loadReposAndScore(fetchRepos, fetchScore);
+                }
+                return true;
+
+            case 'select_org': {
+                const org = this._context?.organizations?.find((o) => o.id === message.orgPk);
+                if (!org) {
+                    return true;
+                }
+                this._orgNameOverride = org.name;
                 await this._loadReposAndScore(fetchRepos, fetchScore);
                 return true;
+            }
+
+            case 'clear_secret': {
+                await clearSecret(message.key as SecretKey, this._settingsDeps);
+                if (await this._refreshSettingsAndGate()) {
+                    await this._loadReposAndScore(fetchRepos, fetchScore);
+                }
+                return true;
+            }
+
+            case 'open_vscode_settings': {
+                const {commands} = require('vscode');
+                await commands.executeCommand('workbench.action.openSettings', 'msgram');
+                return true;
+            }
 
             case 'select_repo': {
                 if (!this._context) {
@@ -342,9 +400,11 @@ export abstract class MeasureSoftGramBase {
                 await this._persistSettings(message.data as SettingsPayload);
                 this._context = null;
                 this._selectedRepo = null;
+                this._orgNameOverride = null;
                 this.post({command: 'settings_saved'});
-                await this._postSettingsLoaded();
-                await this._loadReposAndScore(fetchRepos, fetchScore);
+                if (await this._refreshSettingsAndGate()) {
+                    await this._loadReposAndScore(fetchRepos, fetchScore);
+                }
                 return true;
 
             case 'request_grafana_dashboards':
