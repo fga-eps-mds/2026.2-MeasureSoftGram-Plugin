@@ -6,13 +6,26 @@ import {GrafanaView} from './components/GrafanaView';
 import {OutputView} from './components/action/OutputView.tsx';
 import {SettingsView} from './components/SettingsView';
 import {ActionView} from './components/action/ActionView.tsx';
+import {NotConfiguredView} from './components/NotConfiguredView';
 import {getVSCodeAPI} from './utils/vscode';
 import {now} from './utils/helpers';
 import {DEFAULT_WORKFLOW_YAML} from './utils/defaultWorkflow';
 import {applySettingsToYaml} from './utils/workflowYaml';
 import {getMissingSettings} from './utils/validation';
 
-import type {ExtensionMessage, GrafanaDashboard, LogLine, RepoItem, ScoreData, SettingsData, TabName,} from './types/index';
+import type {
+    ExtensionMessage,
+    GrafanaDashboard,
+    LoadState,
+    LogLine,
+    MissingSetting,
+    OrgItem,
+    RepoItem,
+    ScoreData,
+    SettingsData,
+    SettingsForUi,
+    TabName,
+} from './types/index';
 
 const App: React.FC = () => {
     const vscode = getVSCodeAPI();
@@ -29,15 +42,18 @@ const App: React.FC = () => {
         }
     }, [vscode]);
 
+    const [loadState, setLoadState] = useState<LoadState>('loading');
+    const [missing, setMissing] = useState<MissingSetting[]>([]);
     const [scoreData, setScoreData] = useState<ScoreData | null>(null);
     const [scoreLoading, setScoreLoading] = useState(true);
+    const [organizations, setOrganizations] = useState<OrgItem[]>([]);
+    const [selectedOrgPk, setSelectedOrgPk] = useState<number | null>(null);
     const [repos, setRepos] = useState<RepoItem[]>([]);
     const [selectedRepoPk, setSelectedRepoPk] = useState<number | null>(null);
     const [notifText, setNotifText] = useState('');
     const [notifType, setNotifType] = useState<'ok' | 'error'>('ok');
 
     const [isRunning, setIsRunning] = useState(false);
-    const [showCommitWarn, setShowCommitWarn] = useState(true);
     const [logLines, setLogLines] = useState<LogLine[]>([]);
 
     const appendLog = useCallback((text: string, isError: boolean) => {
@@ -45,7 +61,7 @@ const App: React.FC = () => {
     }, []);
 
     const [settingsSavedFeedback, setSettingsSavedFeedback] = useState(false);
-    const [settings, setSettings] = useState<Partial<SettingsData>>({});
+    const [settings, setSettings] = useState<Partial<SettingsForUi & SettingsData>>({});
 
     const [grafanaDashboards, setGrafanaDashboards] = useState<GrafanaDashboard[]>([]);
     const [grafanaLoading, setGrafanaLoading] = useState(false);
@@ -66,6 +82,20 @@ const App: React.FC = () => {
             const msg = event.data;
             switch (msg.command) {
 
+                case 'not_configured':
+                    setLoadState('not_configured');
+                    setMissing(msg.missing);
+                    setScoreLoading(false);
+                    setScoreData(null);
+                    setRepos([]);
+                    setNotifText('');
+                    break;
+
+                case 'orgs_loaded':
+                    setOrganizations(msg.organizations);
+                    setSelectedOrgPk(msg.selectedOrgPk);
+                    break;
+
                 case 'repos_loaded':
                     setRepos(msg.repos);
                     if (msg.repos.length) {
@@ -74,16 +104,19 @@ const App: React.FC = () => {
                     break;
 
                 case 'score_loading':
+                    setLoadState('loading');
                     setScoreLoading(true);
                     break;
 
                 case 'score_loaded':
+                    setLoadState('ready');
                     setScoreLoading(false);
                     setNotifText('');
                     setScoreData(msg.data);
                     break;
 
                 case 'score_error':
+                    setLoadState('error');
                     setScoreLoading(false);
                     setScoreData(null);
                     setNotifText(msg.message);
@@ -102,16 +135,12 @@ const App: React.FC = () => {
 
                 case 'analysis_done':
                     setIsRunning(false);
-                    setShowCommitWarn(false);
                     appendLog(
                         msg.success
-                            ? 'act concluído com sucesso.'
-                            : `act encerrou com código ${msg.exitCode}.`,
+                            ? 'Execução concluída com sucesso.'
+                            : `Execução encerrou com código ${msg.exitCode}.`,
                         !msg.success,
                     );
-                    if (msg.success) {
-                        setTimeout(() => showTab('dashboard'), 600);
-                    }
                     break;
 
                 case 'analysis_stopped':
@@ -163,6 +192,19 @@ const App: React.FC = () => {
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
     }, [showTab, appendLog]);
+
+    const handleSelectOrg = (orgPk: number) => {
+        setSelectedOrgPk(orgPk);
+        vscode.postMessage({command: 'select_org', orgPk});
+    };
+
+    const handleRetry = () => {
+        vscode.postMessage({command: 'retry'});
+    };
+
+    const handleOpenVscodeSettings = () => {
+        vscode.postMessage({command: 'open_vscode_settings'});
+    };
 
     const handleSelectRepo = (repoPk: number) => {
         setSelectedRepoPk(repoPk);
@@ -220,20 +262,31 @@ const App: React.FC = () => {
                 onSelectRepo={handleSelectRepo}
                 activeTab={activeTab}
                 onShowTab={showTab}
+                organizations={organizations}
+                selectedOrgPk={selectedOrgPk}
+                onSelectOrg={handleSelectOrg}
             />
 
             <Tabs active={activeTab} onSelect={showTab}/>
 
             <div className="pc">
 
-                {activeTab === 'dashboard' && (
+                {activeTab === 'dashboard' && loadState === 'not_configured' && (
+                    <NotConfiguredView
+                        missing={missing}
+                        onOpenSettings={() => showTab('settings')}
+                        onOpenVscodeSettings={handleOpenVscodeSettings}
+                    />
+                )}
+
+                {activeTab === 'dashboard' && loadState !== 'not_configured' && (
                     <DashboardView
                         scoreData={scoreData}
                         scoreLoading={scoreLoading}
                         productName={settings.productName ?? ''}
-                        showCommitWarn={showCommitWarn}
                         notifText={notifText}
                         notifType={notifType}
+                        onRetry={handleRetry}
                     />
                 )}
 
