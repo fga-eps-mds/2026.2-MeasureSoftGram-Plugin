@@ -1,5 +1,10 @@
 import {describe, expect, it} from 'vitest';
-import css from '../index.css?raw';
+import {readFileSync} from 'node:fs';
+import path from 'node:path';
+
+// Lido do disco: o Vitest não processa CSS por padrão e `?raw` volta vazio.
+// O Vitest roda com cwd em webview-ui/ (ambiente jsdom não expõe import.meta.url como file:).
+const css = readFileSync(path.resolve(process.cwd(), 'src/index.css'), 'utf-8');
 
 /**
  * O VS Code injeta variáveis --vscode-* em toda webview. Para respeitar o
