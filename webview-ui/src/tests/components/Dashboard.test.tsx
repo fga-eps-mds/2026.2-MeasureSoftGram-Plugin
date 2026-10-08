@@ -186,11 +186,11 @@ describe('DashboardView', () => {
     });
 
     describe('lista de características', () => {
-        it('deve renderizar todas as características', () => {
+        it('deve renderizar todas as características na lista', () => {
             render(<DashboardView {...defaultProps} />);
-            expect(screen.getByText('Maintainability')).toBeInTheDocument();
-            expect(screen.getByText('Reliability')).toBeInTheDocument();
-            expect(screen.getByText('Performance')).toBeInTheDocument();
+            const list = document.getElementById('chars-dashboard')!;
+            const names = Array.from(list.querySelectorAll('.char-name')).map((e) => e.textContent);
+            expect(names).toEqual(['Maintainability', 'Reliability', 'Performance']);
         });
 
         it('deve exibir certo para características acima da meta', () => {
