@@ -135,6 +135,7 @@ class TestableBase extends MeasureSoftGramBase {
         return super.handleMessage(msg, fr, fs, ws, fsys, win);
     }
     public getSettings() { return this._settings!; }
+    public setActRunner(r: any) { (this as any)._actRunner = r; }
     public getWebviewContent() { return this._getWebviewContent(this.webviewInstance as any, { fsPath: '/ext' } as any); }
     public setGrafanaFetchers(list: any, detail: any) {
         (this as any)._fetchGrafanaDashboards = list;
@@ -570,5 +571,145 @@ suite('MeasureSoftGramBase', () => {
     test('host dentro de grafanaAllowedHosts é aceito (comparação sem maiúsculas)', async () => {
         const posted = await loadWithGrafanaUrl('https://Grafana.Example/d/x', ['grafana.example']);
         assert.ok(posted.some((m: any) => m.command === 'grafana_dashboard_loaded'));
+    });
+
+    // ── US5: execução local via ActRunner ─────────────────────────────────
+
+    function makeActRunner(check: any = { ok: true, version: '29' }) {
+        return {
+            isRunning: false,
+            isStopping: false,
+            runCalls: [] as any[],
+            stopCalls: 0,
+            async checkDocker() { return check; },
+            run(opts: any) { this.isRunning = true; this.runCalls.push(opts); return true; },
+            async stop() { this.stopCalls++; this.isStopping = true; },
+            dispose() {},
+        };
+    }
+    const wsOk = { workspaceFolders: [{ uri: { fsPath: '/ws' } }] } as any;
+    const fsOk = { mkdir: async () => {}, writeFile: async () => {}, readFile: async () => '' } as any;
+    function winFake() {
+        const warnings: string[] = [];
+        return { warnings, win: { createTerminal: () => ({}), showErrorMessage: () => {}, showWarningMessage: (m: string) => { warnings.push(m); } } as any };
+    }
+
+    test('run_action sem token GitHub avisa e não executa', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }));
+        const runner = makeActRunner();
+        base.setActRunner(runner);
+        const { warnings, win } = winFake();
+
+        await base.handleMessage({ command: 'run_action', yaml: 'name: x' }, undefined, undefined, wsOk, fsOk, win);
+
+        assert.strictEqual(runner.runCalls.length, 0);
+        assert.ok(warnings.some((w) => /GitHub/i.test(w)), warnings.join('|'));
+        assert.ok(!base.webviewInstance.posted.some((m: any) => m.command === 'analysis_started'));
+    });
+
+    test('run_action sem workspace emite analysis_blocked no_workspace', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }));
+        base.setActRunner(makeActRunner());
+        const { win } = winFake();
+
+        await base.handleMessage({ command: 'run_action', yaml: 'name: x' }, undefined, undefined, { workspaceFolders: undefined } as any, fsOk, win);
+
+        const b = base.webviewInstance.posted.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(b?.reason, 'no_workspace');
+    });
+
+    test('run_action com Docker ausente emite analysis_blocked docker_missing e não executa', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        await ctx.secrets.store('msgram.githubToken', 'ghp');
+        const base = new TestableBase(ctx);
+        const runner = makeActRunner({ ok: false, reason: 'docker_missing', detail: 'ENOENT' });
+        base.setActRunner(runner);
+        const { win } = winFake();
+
+        await base.handleMessage({ command: 'run_action', yaml: 'name: x' }, undefined, undefined, wsOk, fsOk, win);
+
+        const b = base.webviewInstance.posted.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(b?.reason, 'docker_missing');
+        assert.strictEqual(runner.runCalls.length, 0);
+        assert.strictEqual(base.actionState, 'idle');
+    });
+
+    test('fluxo feliz: salva o yaml, emite analysis_started, output_line e analysis_done', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        await ctx.secrets.store('msgram.githubToken', 'ghp');
+        const base = new TestableBase(ctx);
+        const runner = makeActRunner();
+        base.setActRunner(runner);
+        const written: string[] = [];
+        const fs = { ...fsOk, writeFile: async (_p: string, c: string) => { written.push(c); } } as any;
+        const { win } = winFake();
+
+        await base.handleMessage({ command: 'run_action', yaml: 'name: msgram' }, undefined, undefined, wsOk, fs, win);
+
+        assert.deepStrictEqual(written, ['name: msgram']);
+        assert.strictEqual(runner.runCalls.length, 1);
+        const opts = runner.runCalls[0];
+        assert.strictEqual(opts.workspacePath, '/ws');
+        assert.strictEqual(opts.githubToken, 'ghp');
+        assert.strictEqual(opts.msgramToken, 'tok');
+        assert.ok(opts.dockerDir.endsWith('resources/docker'));
+        assert.ok(base.webviewInstance.posted.some((m: any) => m.command === 'analysis_started'));
+        assert.strictEqual(base.actionState, 'running');
+
+        opts.onLine('linha ok', false);
+        opts.onLine('linha ruim', true);
+        opts.onDone({ success: true, exitCode: 0 });
+
+        const out = base.webviewInstance.posted.filter((m: any) => m.command === 'output_line');
+        assert.deepStrictEqual(out.map((m: any) => [m.line, m.isError]), [['linha ok', false], ['linha ruim', true]]);
+        const done = base.webviewInstance.posted.find((m: any) => m.command === 'analysis_done');
+        assert.deepStrictEqual(done, { command: 'analysis_done', success: true, exitCode: 0 });
+        assert.strictEqual(base.actionState, 'idle');
+    });
+
+    test('run_action com execução em andamento emite analysis_blocked already_running', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        await ctx.secrets.store('msgram.githubToken', 'ghp');
+        const base = new TestableBase(ctx);
+        const runner = makeActRunner();
+        runner.isRunning = true;
+        base.setActRunner(runner);
+        const { win } = winFake();
+
+        await base.handleMessage({ command: 'run_action', yaml: 'name: x' }, undefined, undefined, wsOk, fsOk, win);
+
+        const b = base.webviewInstance.posted.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(b?.reason, 'already_running');
+        assert.strictEqual(runner.runCalls.length, 0);
+    });
+
+    test('stop_analysis chama runner.stop e o término vira analysis_stopped', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        await ctx.secrets.store('msgram.githubToken', 'ghp');
+        const base = new TestableBase(ctx);
+        const runner = makeActRunner();
+        base.setActRunner(runner);
+        const { win } = winFake();
+        await base.handleMessage({ command: 'run_action', yaml: 'name: x' }, undefined, undefined, wsOk, fsOk, win);
+
+        const handled = await base.handleMessage({ command: 'stop_analysis' });
+        assert.strictEqual(handled, true);
+        assert.strictEqual(runner.stopCalls, 1);
+        assert.strictEqual(base.actionState, 'stopping');
+
+        runner.runCalls[0].onDone({ success: false, exitCode: 143, stopped: true });
+        assert.ok(base.webviewInstance.posted.some((m: any) => m.command === 'analysis_stopped'));
+        assert.ok(!base.webviewInstance.posted.some((m: any) => m.command === 'analysis_done'));
+        assert.strictEqual(base.actionState, 'idle');
+    });
+
+    test('stop_analysis sem execução não chama o runner', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        const runner = makeActRunner();
+        base.setActRunner(runner);
+
+        await base.handleMessage({ command: 'stop_analysis' });
+
+        assert.strictEqual(runner.stopCalls, 0);
     });
 });
