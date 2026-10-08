@@ -171,7 +171,11 @@ const App: React.FC = () => {
 
     const handleSaveSettings = (data: SettingsData) => {
         setSettings(data);
-        vscode.postMessage({command: 'save_settings', data});
+        // Campos novos do contrato recebem o padrão até T028/T036 reescreverem este fluxo.
+        vscode.postMessage({
+            command: 'save_settings',
+            data: {organizationName: '', requestTimeoutMs: 15000, grafanaAllowedHosts: [], ...data},
+        });
     };
 
     const handleSaveAction = () => {

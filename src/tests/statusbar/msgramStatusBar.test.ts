@@ -112,4 +112,15 @@ suite('MsgramStatusBar', () => {
 
         assert.strictEqual(item.disposeCalled, true);
     });
+
+    test('setNotConfigured mostra o ícone de engrenagem sem cor de alerta', () => {
+        const item = makeFakeItem();
+        const bar = new MsgramStatusBar(makeDeps(item));
+
+        bar.setNotConfigured();
+
+        assert.strictEqual(item.text, '$(gear) MSGRAM: configurar');
+        assert.strictEqual(item.color, undefined);
+        assert.strictEqual(item.backgroundColor, undefined);
+    });
 });

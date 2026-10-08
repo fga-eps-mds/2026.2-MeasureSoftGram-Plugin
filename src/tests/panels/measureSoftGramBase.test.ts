@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { MeasureSoftGramBase } from '../../panels/measureSoftGramBase';
+import type { SettingsDeps } from '../../config/settings';
 
 function makeWebview() {
     const posted: any[] = [];
@@ -17,7 +18,25 @@ function makeSecrets(token = '') {
     return {
         get: async (k: string) => store[k],
         store: async (k: string, v: string) => { store[k] = v; },
+        delete: async (k: string) => { delete store[k]; },
         onDidChange: () => ({ dispose: () => {} }),
+    };
+}
+
+/** Deps de configuração falsas: lê/grava num mapa em memória. */
+function makeSettingsDepsFor(ctx: any): SettingsDeps {
+    const config: Record<string, unknown> = {
+        serviceUrl: ctx.workspaceState.get('msgram.serviceUrl', undefined),
+        productName: ctx.workspaceState.get('msgram.productName', undefined),
+    };
+    return {
+        getConfiguration: () => ({
+            get: <T>(k: string, def?: T) => (config[k] as T) ?? def,
+            update: async (k: string, v: unknown) => { config[k] = v; },
+        }),
+        secrets: ctx.secrets,
+        hasWorkspaceFolder: () => true,
+        ConfigurationTarget: { Global: 1, Workspace: 2 },
     };
 }
 
@@ -36,11 +55,11 @@ function makeExtensionContext(overrides: Partial<{
     productName: string;
     token: string;
 }> = {}) {
+    const ws: Record<string, string> = {};
+    if (overrides.serviceUrl !== undefined) { ws['msgram.serviceUrl'] = overrides.serviceUrl; }
+    if (overrides.productName !== undefined) { ws['msgram.productName'] = overrides.productName; }
     return {
-        workspaceState: makeWorkspaceState({
-            'msgram.serviceUrl':  overrides.serviceUrl  ?? 'https://msgram-api.synaptha.com/',
-            'msgram.productName': overrides.productName ?? 'measuresoftgram 2026',
-        }),
+        workspaceState: makeWorkspaceState(ws),
         secrets: makeSecrets(overrides.token ?? ''),
         extensionUri: { fsPath: '/ext' } as any,
         subscriptions: [],
@@ -69,7 +88,7 @@ class TestableBase extends MeasureSoftGramBase {
     constructor(ctx: any,
                 public fetchRepos = makeFetchRepositories(),
                 public fetchScore = makeFetchScoreForRepo()) {
-        super(ctx);
+        super(ctx, undefined, makeSettingsDepsFor(ctx));
     }
 
     protected get _webview() { return this.webviewInstance as any; }
@@ -89,7 +108,7 @@ class TestableBase extends MeasureSoftGramBase {
     public handleCommonMessage(msg: any, fr = this.fetchRepos, fs = this.fetchScore) {
         return this._handleCommonMessage(msg, fr, fs);
     }
-    public getSettings() { return this._settings; }
+    public getSettings() { return this._settings!; }
     public getContext()  { return this._context; }
     public getSelectedRepo() { return this._selectedRepo; }
 }
@@ -102,7 +121,7 @@ suite('MeasureSoftGramBase', () => {
 
         await base.loadPersistedSettings();
 
-        assert.strictEqual(base.getSettings().serviceUrl,  'https://custom.com/');
+        assert.strictEqual(base.getSettings().serviceUrl,  'https://custom.com');
         assert.strictEqual(base.getSettings().productName, 'my-product');
         assert.strictEqual(base.getSettings().token,       'tok123');
     });
@@ -113,8 +132,8 @@ suite('MeasureSoftGramBase', () => {
 
         await base.loadPersistedSettings();
 
-        assert.strictEqual(base.getSettings().serviceUrl,  'https://msgram-api.synaptha.com/');
-        assert.strictEqual(base.getSettings().productName, 'measuresoftgram 2026');
+        assert.strictEqual(base.getSettings().serviceUrl,  'https://msgram.lappis.rocks');
+        assert.strictEqual(base.getSettings().productName, '');
         assert.strictEqual(base.getSettings().token,       '');
     });
 
@@ -124,7 +143,7 @@ suite('MeasureSoftGramBase', () => {
 
         await base.persistSettings({ serviceUrl: 'https://new.com/', msgramServiceToken: 'newtoken', productName: 'new-product' });
 
-        assert.strictEqual(base.getSettings().serviceUrl,  'https://new.com/');
+        assert.strictEqual(base.getSettings().serviceUrl,  'https://new.com');
         assert.strictEqual(base.getSettings().productName, 'new-product');
         assert.strictEqual(base.getSettings().token,       'newtoken');
     });
@@ -210,7 +229,7 @@ suite('MeasureSoftGramBase', () => {
 
         assert.strictEqual(handled, true);
         const settingsMsg = base.webviewInstance.posted.find((m: any) => m.command === 'settings_loaded');
-        assert.strictEqual(settingsMsg?.data.serviceUrl, 'https://test.com/');
+        assert.strictEqual(settingsMsg?.data.serviceUrl, 'https://test.com');
     });
 
     test('handleCommonMessage: select_repo muda o repositório selecionado', async () => {
@@ -230,7 +249,7 @@ suite('MeasureSoftGramBase', () => {
         const handled = await base.handleCommonMessage({ command: 'save_settings', data });
 
         assert.strictEqual(handled, true);
-        assert.strictEqual(base.getSettings().serviceUrl, 'https://saved.com/');
+        assert.strictEqual(base.getSettings().serviceUrl, 'https://saved.com');
         const savedMsg = base.webviewInstance.posted.find((m: any) => m.command === 'settings_saved');
         assert.ok(savedMsg);
     });

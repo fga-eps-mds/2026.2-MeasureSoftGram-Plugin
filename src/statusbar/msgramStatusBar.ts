@@ -41,6 +41,12 @@ export class MsgramStatusBar {
     this._item.backgroundColor = undefined;
   }
 
+  setNotConfigured(): void {
+    this._item.text = '$(gear) MSGRAM: configurar';
+    this._item.color = undefined;
+    this._item.backgroundColor = undefined;
+  }
+
   setNoData(): void {
     this._item.text = '$(dash) MSGRAM: sem dados';
     this._item.color = undefined;

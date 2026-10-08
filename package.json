@@ -68,12 +68,29 @@
         "title": "Abrir MeasureSoftGram (Panel)",
         "icon": "$(graph)",
         "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.openSettings",
+        "title": "Configurar",
+        "icon": "$(gear)",
+        "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.clearTokens",
+        "title": "Remover tokens salvos",
+        "category": "MeasureSoftGram"
       }
     ],
     "menus": {
       "commandPalette": [
         {
           "command": "msgram.run"
+        },
+        {
+          "command": "msgram.openSettings"
+        },
+        {
+          "command": "msgram.clearTokens"
         }
       ],
       "view/title": [
@@ -83,6 +100,51 @@
           "group": "navigation"
         }
       ]
+    },
+    "configuration": {
+      "title": "MeasureSoftGram",
+      "properties": {
+        "msgram.serviceUrl": {
+          "type": "string",
+          "default": "https://msgram.lappis.rocks",
+          "description": "URL base do serviço MeasureSoftGram."
+        },
+        "msgram.productName": {
+          "type": "string",
+          "default": "",
+          "description": "Nome do produto cadastrado no serviço MeasureSoftGram."
+        },
+        "msgram.organizationName": {
+          "type": "string",
+          "default": "",
+          "description": "Organização a usar quando a conta tiver mais de uma. Vazio = a primeira."
+        },
+        "msgram.sonarProjectKey": {
+          "type": "string",
+          "default": "",
+          "description": "Chave do projeto no SonarCloud (opcional, usada pela Action)."
+        },
+        "msgram.workflowName": {
+          "type": "string",
+          "default": "Build",
+          "description": "Nome do workflow de build que a Action observa (on: workflow_run)."
+        },
+        "msgram.requestTimeoutMs": {
+          "type": "number",
+          "default": 15000,
+          "minimum": 1000,
+          "maximum": 60000,
+          "description": "Tempo limite de cada requisição ao serviço, em milissegundos."
+        },
+        "msgram.grafanaAllowedHosts": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "Hosts permitidos para os dashboards do Grafana. Vazio = qualquer host HTTPS."
+        }
+      }
     }
   },
   "scripts": {
