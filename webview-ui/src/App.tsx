@@ -22,8 +22,9 @@ import type {
     OrgItem,
     RepoItem,
     ScoreData,
-    SettingsData,
+    SecretKey,
     SettingsForUi,
+    SettingsPayload,
     TabName,
 } from './types/index';
 
@@ -61,7 +62,9 @@ const App: React.FC = () => {
     }, []);
 
     const [settingsSavedFeedback, setSettingsSavedFeedback] = useState(false);
-    const [settings, setSettings] = useState<Partial<SettingsForUi & SettingsData>>({});
+    const [settings, setSettings] = useState<Partial<SettingsForUi>>({});
+    // Incrementa a cada settings_loaded para remontar o SettingsView com os valores novos.
+    const [settingsVersion, setSettingsVersion] = useState(0);
 
     const [grafanaDashboards, setGrafanaDashboards] = useState<GrafanaDashboard[]>([]);
     const [grafanaLoading, setGrafanaLoading] = useState(false);
@@ -70,6 +73,7 @@ const App: React.FC = () => {
     const [grafanaError, setGrafanaError] = useState<string | null>(null);
 
     const [yaml, setYaml] = useState(DEFAULT_WORKFLOW_YAML);
+    const [yamlExists, setYamlExists] = useState<boolean | null>(null);
     const [actionSavedFeedback, setActionSavedFeedback] = useState(false);
     const [actionAlert, setActionAlert] = useState<string | null>(null);
 
@@ -149,7 +153,8 @@ const App: React.FC = () => {
                     break;
 
                 case 'yaml_loaded':
-                    setYaml(msg.yaml);
+                    setYaml(msg.yaml || DEFAULT_WORKFLOW_YAML);
+                    setYamlExists(!!msg.exists);
                     break;
 
                 case 'action_saved':
@@ -164,6 +169,7 @@ const App: React.FC = () => {
 
                 case 'settings_loaded':
                     setSettings(msg.data);
+                    setSettingsVersion((v) => v + 1);
                     break;
 
                 case 'grafana_loading':
@@ -211,13 +217,23 @@ const App: React.FC = () => {
         vscode.postMessage({command: 'select_repo', repoPk});
     };
 
-    const handleSaveSettings = (data: SettingsData) => {
-        setSettings(data);
-        // Campos novos do contrato recebem o padrão até T028/T036 reescreverem este fluxo.
-        vscode.postMessage({
-            command: 'save_settings',
-            data: {organizationName: '', requestTimeoutMs: 15000, grafanaAllowedHosts: [], ...data},
-        });
+    const handleSaveSettings = (data: SettingsPayload) => {
+        // Atualiza o que já dá para saber; a extensão responde settings_loaded com as flags reais.
+        setSettings((prev) => ({
+            ...prev,
+            serviceUrl: data.serviceUrl,
+            productName: data.productName,
+            organizationName: data.organizationName,
+            sonarProjectKey: data.sonarProjectKey,
+            workflowName: data.workflowName,
+            hasMsgramToken: prev.hasMsgramToken || !!data.msgramServiceToken,
+            hasGithubToken: prev.hasGithubToken || !!data.githubToken,
+        }));
+        vscode.postMessage({command: 'save_settings', data});
+    };
+
+    const handleClearSecret = (key: SecretKey) => {
+        vscode.postMessage({command: 'clear_secret', key});
     };
 
     const handleSaveAction = () => {
@@ -309,8 +325,10 @@ const App: React.FC = () => {
 
                 {activeTab === 'settings' && (
                     <SettingsView
+                        key={settingsVersion}
                         initialData={settings}
                         onSave={handleSaveSettings}
+                        onClearSecret={handleClearSecret}
                         savedFeedback={settingsSavedFeedback}
                     />
                 )}
@@ -324,6 +342,7 @@ const App: React.FC = () => {
                         onRun={handleRunAction}
                         running={isRunning}
                         alert={actionAlert}
+                        yamlExists={yamlExists}
                     />
                 )}
 
