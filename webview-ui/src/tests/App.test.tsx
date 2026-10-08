@@ -89,7 +89,7 @@ vi.mock('../utils/defaultWorkflow', () => ({
 }));
 
 vi.mock('../utils/workflowYaml', () => ({
-    applySettingsToYaml: (_yaml: string, _settings: unknown) => 'yaml-merged',
+    applySettingsToYaml: () => 'yaml-merged',
 }));
 
 vi.mock('../utils/vscode', () => ({
