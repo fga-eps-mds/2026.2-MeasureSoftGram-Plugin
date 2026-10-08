@@ -12,6 +12,8 @@ interface ActionViewProps {
     onRun: () => void;
     running: boolean;
     alert?: string | null;
+    /** true = carregado do msgram.yml do projeto; false = modelo; null = ainda não sabe */
+    yamlExists?: boolean | null;
 }
 
 export const ActionView: React.FC<ActionViewProps> = ({
@@ -22,6 +24,7 @@ export const ActionView: React.FC<ActionViewProps> = ({
                                                           onRun,
                                                           running,
                                                           alert,
+                                                          yamlExists = null,
                                                       }) => (
     <div className="vw" id="view-action">
         <div className="sf">
@@ -37,6 +40,13 @@ export const ActionView: React.FC<ActionViewProps> = ({
                 <i className="ti ti-info-circle"/>
                 <span>
                     Edite o <strong>msgram.yml</strong> abaixo.
+                    {yamlExists !== null && (
+                        <span className={`yaml-origin ${yamlExists ? 'existing' : 'new'}`} data-testid="yaml-origin">
+                            {yamlExists
+                                ? ' Arquivo existente em .github/workflows/msgram.yml: salvar sobrescreve.'
+                                : ' Novo arquivo: será criado em .github/workflows/msgram.yml.'}
+                        </span>
+                    )}
                 </span>
             </div>
 

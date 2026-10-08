@@ -84,19 +84,6 @@ export interface SettingsPayload extends ProjectSettings {
     githubToken?: string;
 }
 
-/**
- * @deprecated formato antigo (tokens em claro). Removido em T033/T034;
- * use SettingsForUi/SettingsPayload.
- */
-export interface SettingsData {
-    serviceUrl: string;
-    msgramServiceToken: string;
-    githubToken: string;
-    sonarProjectKey: string;
-    productName: string;
-    workflowName: string;
-}
-
 export type SecretKey = 'msgram.token' | 'msgram.githubToken';
 
 export type MissingSetting = 'token' | 'serviceUrl' | 'productName';

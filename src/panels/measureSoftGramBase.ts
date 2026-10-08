@@ -332,6 +332,14 @@ export abstract class MeasureSoftGramBase {
                 await this._runAction(String(message.yaml), actionDeps);
                 return true;
 
+            case 'request_yaml':
+                await this._sendExistingWorkflow(actionDeps);
+                return true;
+
+            case 'show_warning':
+                actionDeps.window.showWarningMessage?.(String(message.message));
+                return true;
+
             default:
                 return this._handleCommonMessage(message, fetchRepos, fetchScore);
         }
@@ -464,6 +472,34 @@ export abstract class MeasureSoftGramBase {
             throw new Error('Abra uma pasta/workspace antes de salvar o workflow.');
         }
         return folder.uri.fsPath;
+    }
+
+    /**
+     * Responde a request_yaml com o conteúdo do msgram.yml do projeto, se
+     * existir. Sem arquivo (ou sem workspace) responde exists:false e yaml
+     * vazio; a interface usa o modelo padrão dela. Assim o arquivo da
+     * pessoa nunca é sobrescrito pelo modelo sem ela ver (A5, FR-011).
+     */
+    protected async _sendExistingWorkflow(deps: ActionDeps): Promise<void> {
+        let workspacePath: string;
+        try {
+            workspacePath = this._workspacePath(deps);
+        } catch {
+            this.post({command: 'yaml_loaded', yaml: '', exists: false});
+            return;
+        }
+        const workflowAbsPath = path.join(workspacePath, WORKFLOW_REL_PATH);
+        try {
+            const readFile = deps.fs.readFile ?? defaultFs.readFile;
+            const content = await readFile(workflowAbsPath, 'utf-8');
+            this.post({command: 'yaml_loaded', yaml: String(content), exists: true});
+        } catch (err) {
+            const code = (err as NodeJS.ErrnoException)?.code;
+            if (code !== 'ENOENT') {
+                this.logger()(`[ERRO] Não foi possível ler ${workflowAbsPath}: ${(err as Error).message}`);
+            }
+            this.post({command: 'yaml_loaded', yaml: '', exists: false});
+        }
     }
 
     protected async _saveWorkflowFile(yaml: string, deps: ActionDeps): Promise<string> {

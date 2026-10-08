@@ -419,4 +419,99 @@ suite('MeasureSoftGramBase', () => {
         assert.ok(cmds.includes('score_loaded'));
         assert.ok(!cmds.includes('not_configured'));
     });
+
+    // ── US2: settings completas, request_yaml, show_warning ───────────────
+
+    const FULL_PAYLOAD = {
+        serviceUrl: 'https://s.com/', productName: 'P', organizationName: 'O',
+        sonarProjectKey: 'S', workflowName: 'W', requestTimeoutMs: 20000, grafanaAllowedHosts: ['g.com'],
+        msgramServiceToken: 'tok', githubToken: 'ghp',
+    };
+
+    test('save_settings persiste os campos não sensíveis na configuração e os tokens em secrets', async () => {
+        const ctx = makeExtensionContext();
+        const base = new TestableBase(ctx);
+
+        await base.handleMessage({ command: 'save_settings', data: FULL_PAYLOAD });
+
+        const s = base.getSettings();
+        assert.strictEqual(s.serviceUrl, 'https://s.com');
+        assert.strictEqual(s.organizationName, 'O');
+        assert.strictEqual(s.sonarProjectKey, 'S');
+        assert.strictEqual(s.workflowName, 'W');
+        assert.strictEqual(s.requestTimeoutMs, 20000);
+        assert.deepStrictEqual(s.grafanaAllowedHosts, ['g.com']);
+        assert.strictEqual(await ctx.secrets.get('msgram.token'), 'tok');
+        assert.strictEqual(await ctx.secrets.get('msgram.githubToken'), 'ghp');
+    });
+
+    test('settings_loaded após salvar traz hasGithubToken=true e nunca o valor', async () => {
+        const base = new TestableBase(makeExtensionContext());
+
+        await base.handleMessage({ command: 'save_settings', data: FULL_PAYLOAD });
+
+        const msgs = base.webviewInstance.posted.filter((m: any) => m.command === 'settings_loaded');
+        const last = msgs[msgs.length - 1];
+        assert.strictEqual(last.data.hasGithubToken, true);
+        assert.strictEqual(last.data.hasMsgramToken, true);
+        assert.strictEqual(last.data.sonarProjectKey, 'S');
+        assert.ok(!JSON.stringify(last).includes('ghp'));
+        assert.ok(!JSON.stringify(last).includes('"tok"'));
+    });
+
+    test('save_settings com token vazio mantém o token anterior', async () => {
+        const ctx = makeExtensionContext({ token: 'antigo' });
+        const base = new TestableBase(ctx);
+
+        await base.handleMessage({ command: 'save_settings', data: { ...FULL_PAYLOAD, msgramServiceToken: '' } });
+
+        assert.strictEqual(await ctx.secrets.get('msgram.token'), 'antigo');
+    });
+
+    test('request_yaml com arquivo existente responde yaml_loaded{exists:true} com o conteúdo', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        const ws = { workspaceFolders: [{ uri: { fsPath: '/ws' } }] } as any;
+        const fs = {
+            mkdir: async () => {}, writeFile: async () => {},
+            readFile: async (p: string) => { assert.ok(String(p).endsWith('.github/workflows/msgram.yml')); return 'name: meu-workflow'; },
+        } as any;
+
+        await base.handleMessage({ command: 'request_yaml' }, undefined, undefined, ws, fs);
+
+        const msg = base.webviewInstance.posted.find((m: any) => m.command === 'yaml_loaded');
+        assert.deepStrictEqual(msg, { command: 'yaml_loaded', yaml: 'name: meu-workflow', exists: true });
+    });
+
+    test('request_yaml sem arquivo responde exists:false e yaml vazio (a interface usa o modelo)', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        const ws = { workspaceFolders: [{ uri: { fsPath: '/ws' } }] } as any;
+        const enoent = Object.assign(new Error('nope'), { code: 'ENOENT' });
+        const fs = { mkdir: async () => {}, writeFile: async () => {}, readFile: async () => { throw enoent; } } as any;
+
+        await base.handleMessage({ command: 'request_yaml' }, undefined, undefined, ws, fs);
+
+        const msg = base.webviewInstance.posted.find((m: any) => m.command === 'yaml_loaded');
+        assert.deepStrictEqual(msg, { command: 'yaml_loaded', yaml: '', exists: false });
+    });
+
+    test('request_yaml sem workspace responde exists:false sem lançar', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        const ws = { workspaceFolders: undefined } as any;
+
+        await base.handleMessage({ command: 'request_yaml' }, undefined, undefined, ws, { mkdir: async () => {}, writeFile: async () => {}, readFile: async () => '' } as any);
+
+        const msg = base.webviewInstance.posted.find((m: any) => m.command === 'yaml_loaded');
+        assert.strictEqual(msg?.exists, false);
+    });
+
+    test('show_warning chama window.showWarningMessage com a mensagem', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        const shown: string[] = [];
+        const win = { createTerminal: () => ({}), showErrorMessage: () => {}, showWarningMessage: (m: string) => { shown.push(m); } } as any;
+
+        const handled = await base.handleMessage({ command: 'show_warning', message: 'Preencha o token' }, undefined, undefined, undefined, undefined, win);
+
+        assert.strictEqual(handled, true);
+        assert.deepStrictEqual(shown, ['Preencha o token']);
+    });
 });
