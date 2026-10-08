@@ -271,3 +271,48 @@ suite('MeasureSoftGramPanel — handleMessage: run_action', () => {
         assert.strictEqual(deps._errors.length, 1);
     });
 });
+
+suite('MeasureSoftGramPanel — status bar (US4)', () => {
+    teardown(() => { MeasureSoftGramPanel.currentPanel = undefined; });
+
+    function makeStatusBar() {
+        return {
+            calls: [] as string[],
+            lastScore: undefined as number | undefined,
+            setLoading()        { this.calls.push('loading'); },
+            setScore(s: number) { this.calls.push('score'); this.lastScore = s; },
+            setNoData()         { this.calls.push('noData'); },
+            setError()          { this.calls.push('error'); },
+            setNotConfigured()  { this.calls.push('notConfigured'); },
+            dispose()           {},
+        };
+    }
+
+    test('render recebe a status bar e o painel a atualiza ao carregar o score', async () => {
+        const webview = makeWebview();
+        const ctx = makeExtensionContext();
+        const vsWindow = makeVsWindow(webview);
+        const sb = makeStatusBar();
+        MeasureSoftGramPanel.currentPanel = undefined;
+        MeasureSoftGramPanel.render(ctx as any, sb as any, vsWindow as any);
+        const panel = MeasureSoftGramPanel.currentPanel!;
+
+        await panel.handleMessage({ command: 'request_score' }, makeFetchRepos(), makeFetchScore({ score: 0.77, noData: false, characteristics: [] }));
+
+        assert.ok(sb.calls.includes('loading'));
+        assert.strictEqual(sb.lastScore, 0.77);
+        assert.strictEqual(sb.calls[sb.calls.length - 1], 'score', 'não fica em loading');
+    });
+
+    test('erro no painel leva a status bar para erro', async () => {
+        const webview = makeWebview();
+        const sb = makeStatusBar();
+        MeasureSoftGramPanel.currentPanel = undefined;
+        MeasureSoftGramPanel.render(makeExtensionContext() as any, sb as any, makeVsWindow(webview) as any);
+        const panel = MeasureSoftGramPanel.currentPanel!;
+
+        await panel.handleMessage({ command: 'request_score' }, makeFetchReposError('x'), makeFetchScore());
+
+        assert.strictEqual(sb.calls[sb.calls.length - 1], 'error');
+    });
+});
