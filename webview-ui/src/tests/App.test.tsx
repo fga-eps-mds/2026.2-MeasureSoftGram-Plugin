@@ -82,16 +82,19 @@ vi.mock('../components/SettingsView', () => ({
 }));
 
 vi.mock('../components/action/ActionView.tsx', () => ({
-    ActionView: ({onSave, onRun, savedFeedback, running, alert}: {
+    ActionView: ({onSave, onRun, onStop, savedFeedback, running, alert, blocked}: {
         onSave: () => void;
         onRun: () => void;
+        onStop: () => void;
         savedFeedback: boolean;
         running: boolean;
         alert: string | null;
+        blocked: {reason: string} | null;
     }) => (
-        <div data-testid="action-view">
+        <div data-testid="action-view" data-blocked={blocked?.reason ?? ''}>
             <button data-testid="action-save" onClick={onSave}>save</button>
             <button data-testid="action-run" onClick={onRun}>run</button>
+            <button data-testid="action-stop" onClick={onStop}>stop</button>
             {savedFeedback && <span data-testid="action-feedback"/>}
             {running && <span data-testid="action-running"/>}
             {alert && <span data-testid="action-alert">{alert}</span>}
@@ -360,6 +363,40 @@ describe('App', () => {
             act(() => sendMessage({command: 'score_error', message: 'x', kind: 'unavailable'}));
             fireEvent.click(screen.getByTestId('retry'));
             expect(mockPostMessage).toHaveBeenCalledWith({command: 'retry'});
+        });
+    });
+
+    describe('execução local (US5)', () => {
+        it('analysis_blocked chega na ActionView e desliga running', () => {
+            render(<App/>);
+            fireEvent.click(screen.getByTestId('tab-action'));
+            act(() => sendMessage({command: 'analysis_started'}));
+            fireEvent.click(screen.getByTestId('tab-action'));
+            act(() => sendMessage({command: 'analysis_blocked', reason: 'docker_missing'}));
+            expect(screen.getByTestId('action-view').getAttribute('data-blocked')).toBe('docker_missing');
+            expect(screen.queryByTestId('action-running')).not.toBeInTheDocument();
+        });
+
+        it('um novo run_action limpa o bloqueio anterior', () => {
+            render(<App/>);
+            fireEvent.click(screen.getByTestId('tab-action'));
+            act(() => sendMessage({command: 'analysis_blocked', reason: 'docker_stopped'}));
+            fireEvent.click(screen.getByTestId('action-run'));
+            expect(screen.getByTestId('action-view').getAttribute('data-blocked')).toBe('');
+        });
+
+        it('"Parar" envia stop_analysis', () => {
+            render(<App/>);
+            fireEvent.click(screen.getByTestId('tab-action'));
+            fireEvent.click(screen.getByTestId('action-stop'));
+            expect(mockPostMessage).toHaveBeenCalledWith({command: 'stop_analysis'});
+        });
+
+        it('analysis_stopped registra "interrompida" na saída', () => {
+            render(<App/>);
+            act(() => sendMessage({command: 'analysis_started'}));
+            act(() => sendMessage({command: 'analysis_stopped'}));
+            expect(screen.getByTestId('output-view').getAttribute('data-lines')).toBe('1');
         });
     });
 
