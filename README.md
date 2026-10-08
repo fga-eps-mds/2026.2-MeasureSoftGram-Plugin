@@ -28,8 +28,17 @@ O painel exibe o indicador multidimensional da qualidade de software **TSQMI**, 
 - **Indicador Multidimensional da Qualidade Geral/Total do Software (TSQMI)** - um único número de 0 a 1 que resume a saúde do projeto, calculado por um metamodelo algébrico original (produto de Hadamard + norma de Frobenius).
 - **Características de qualidade** - Confiabilidade, Manutenibilidade e Adequação Funcional, cada uma com valor atual e a meta definida pela equipe no serviço.
 - **Dashboards Grafana embutidos** - quatro painéis analíticos carregados diretamente dentro do VS Code, sem abrir o browser.
-- **Visibilidade de log** - todas as chamadas à API ficam visíveis no painel Output do VS Code para fácil diagnóstico.
-- **MeasureSoftGram Action** - executa a action que publica a qualidade de software direto no MeasureSoftGram.
+- **Visibilidade de log** - todas as chamadas à API ficam no canal "MeasureSoftGram API" do painel Output do VS Code, e a saída da execução local aparece na aba **Saída** do painel.
+- **MeasureSoftGram Action** - gera o `.github/workflows/msgram.yml` do seu projeto a partir das Settings e, se você tiver Docker, executa a Action localmente para testar.
+
+### Execução local da Action (requer Docker)
+
+A aba **Action** edita e salva o `msgram.yml`. A execução oficial continua sendo no GitHub Actions, após o workflow de build. O botão **Executar** roda o mesmo workflow na sua máquina com o [act](https://github.com/nektos/act) dentro de um contêiner:
+
+- **Pré-requisito:** [Docker](https://docs.docker.com/get-docker/) instalado e em execução. Sem ele o botão avisa e não roda nada.
+- Os tokens configurados em Settings são passados ao contêiner só pelo ambiente do processo e aparecem mascarados na saída.
+- A saída chega em tempo real na aba **Saída**; **Parar** interrompe e derruba o contêiner.
+- A execução local também publica no MeasureSoftGram, então precisa de internet e dos dois tokens.
 
 
 ---
