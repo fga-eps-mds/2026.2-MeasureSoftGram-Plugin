@@ -19,7 +19,8 @@
     "theme": "dark"
   },
   "engines": {
-    "vscode": "^1.120.0"
+    "vscode": "^1.120.0",
+    "node": ">=22"
   },
   "categories": [
     "Other",
@@ -88,18 +89,21 @@
     "install:all": "npm install && cd webview-ui && npm install",
     "start:webview": "cd webview-ui && npm run start",
     "build:webview": "cd webview-ui && npm run build",
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run build:webview && npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test",
-    "test:unit": "npm run compile && mocha --ui tdd --timeout 10000 --require './out/tests/vscode.mock.js' 'out/tests/**/*.test.js'",
-    "test:coverage": "npm run compile && c8 --reporter=lcov --reporter=text --src src --exclude 'out/tests/**' --exclude '.mocharc.cjs' mocha --ui tdd --timeout 10000 --require './out/tests/vscode.mock.js' 'out/tests/**/*.test.js'",
+    "test": "npm run test:unit",
+    "test:unit": "npm run compile && mocha --ui tdd --timeout 10000 --require './out/tests/vscode.mock.js' 'out/tests/**/*.test.js' --ignore 'out/tests/integration/**'",
+    "test:coverage": "npm run compile && c8 --reporter=lcov --reporter=text --src src --exclude 'out/tests/**' --exclude '.mocharc.cjs' mocha --ui tdd --timeout 10000 --require './out/tests/vscode.mock.js' 'out/tests/**/*.test.js' --ignore 'out/tests/integration/**'",
     "test:webview-run": "cd webview-ui && npm run test:run",
     "test:webview-watch": "cd webview-ui && npm run test:watch",
     "test:webview-coverage": "cd webview-ui && npm run test:coverage",
-    "test:all": "npm run test:webview-run && npm test"
+    "test:all": "npm run test:webview-run && npm test",
+    "lint:webview": "cd webview-ui && npm run lint",
+    "test:integration": "npm run compile && vscode-test",
+    "package": "npx @vscode/vsce package --no-git-tag-version"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
