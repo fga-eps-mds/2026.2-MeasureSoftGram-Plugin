@@ -31,7 +31,8 @@ function makePanel(webview: ReturnType<typeof makeWebview>) {
 
 function makeExtensionContext() {
     const ws: Record<string, any> = {};
-    const sec: Record<string, string> = {};
+    const sec: Record<string, string> = { 'msgram.token': 'tok' };
+    (require('vscode').workspace._config.msgram ??= {}).productName = 'measuresoftgram';
     return {
         workspaceState: {
             get<T>(key: string, def: T): T { return ws[key] ?? def; },

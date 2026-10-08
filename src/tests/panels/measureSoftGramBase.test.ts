@@ -78,8 +78,21 @@ function makeFetchScoreForRepo(result: any = { score: 0.85, noData: false }) {
     return async () => result;
 }
 
+function makeStatusBar() {
+    return {
+        calls: [] as string[],
+        setLoading()        { this.calls.push('loading'); },
+        setScore(_s: number){ this.calls.push('score'); },
+        setNoData()         { this.calls.push('noData'); },
+        setError()          { this.calls.push('error'); },
+        setNotConfigured()  { this.calls.push('notConfigured'); },
+        dispose()           {},
+    };
+}
+
 class TestableBase extends MeasureSoftGramBase {
     public webviewInstance = makeWebview();
+    public statusBar = makeStatusBar();
     public loadStartCalled = false;
     public scoreLoadedData: any = null;
     public scoreErrorCalled = false;
@@ -89,6 +102,7 @@ class TestableBase extends MeasureSoftGramBase {
                 public fetchRepos = makeFetchRepositories(),
                 public fetchScore = makeFetchScoreForRepo()) {
         super(ctx, undefined, makeSettingsDepsFor(ctx));
+        (this as any)._statusBar = this.statusBar;
     }
 
     protected get _webview() { return this.webviewInstance as any; }
@@ -260,5 +274,137 @@ suite('MeasureSoftGramBase', () => {
         const handled = await base.handleCommonMessage({ command: 'unknown_command' });
 
         assert.strictEqual(handled, false);
+    });
+
+    // ── US1: estado "não configurado", organizações, retry, segredos ──────
+
+    test('request_score sem token emite settings_loaded com hasMsgramToken=false e not_configured', async () => {
+        const base = new TestableBase(makeExtensionContext({ productName: 'P' }));
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const settings = base.webviewInstance.posted.find((m: any) => m.command === 'settings_loaded');
+        assert.strictEqual(settings?.data.hasMsgramToken, false);
+        assert.ok(!('token' in (settings?.data ?? {})), 'nunca envia o valor do token');
+        const nc = base.webviewInstance.posted.find((m: any) => m.command === 'not_configured');
+        assert.deepStrictEqual(nc?.missing, ['token']);
+        assert.ok(!base.webviewInstance.posted.some((m: any) => m.command === 'score_loading'), 'não tenta carregar');
+        assert.ok(base.statusBar.calls.includes('notConfigured'));
+        assert.strictEqual(base.loadState, 'not_configured');
+    });
+
+    test('request_score sem produto lista productName entre os faltantes', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok' }));
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const nc = base.webviewInstance.posted.find((m: any) => m.command === 'not_configured');
+        assert.deepStrictEqual(nc?.missing, ['productName']);
+    });
+
+    test('request_score configurado emite orgs_loaded, repos_loaded e score_loaded', async () => {
+        const fetchRepos = async () => ({
+            orgPk: 10, orgName: 'org', organizations: [{ id: 10, name: 'org' }, { id: 11, name: 'outra' }],
+            productPk: 20, productName: 'P', repos: [{ id: 1, name: 'repo-a' }],
+        });
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), fetchRepos as any);
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const cmds = base.webviewInstance.posted.map((m: any) => m.command);
+        assert.ok(cmds.includes('orgs_loaded'));
+        assert.ok(cmds.includes('repos_loaded'));
+        assert.ok(cmds.includes('score_loaded'));
+        const orgs = base.webviewInstance.posted.find((m: any) => m.command === 'orgs_loaded');
+        assert.strictEqual(orgs?.selectedOrgPk, 10);
+        assert.strictEqual(orgs?.organizations.length, 2);
+        assert.strictEqual(base.loadState, 'ready');
+    });
+
+    test('score_error carrega kind derivado de HttpError', async () => {
+        const { HttpError } = require('../../services/httpClient');
+        const failFetch = async () => { throw new HttpError('HTTP 401', 'auth', 401); };
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), failFetch as any);
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const err = base.webviewInstance.posted.find((m: any) => m.command === 'score_error');
+        assert.strictEqual(err?.kind, 'auth');
+        assert.strictEqual(base.loadState, 'error');
+        assert.ok(base.statusBar.calls.includes('error'));
+    });
+
+    test('score_error de erro genérico tem kind other', async () => {
+        const failFetch = async () => { throw new Error('boom'); };
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), failFetch as any);
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const err = base.webviewInstance.posted.find((m: any) => m.command === 'score_error');
+        assert.strictEqual(err?.kind, 'other');
+        assert.strictEqual(err?.message, 'boom');
+    });
+
+    test('retry recarrega repositórios e score', async () => {
+        let calls = 0;
+        const fetchRepos = async () => { calls++; return { orgPk: 1, orgName: 'o', organizations: [], productPk: 2, productName: 'P', repos: [{ id: 1, name: 'r' }] }; };
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), fetchRepos as any);
+        await base.handleMessage({ command: 'request_score' });
+
+        const handled = await base.handleMessage({ command: 'retry' });
+
+        assert.strictEqual(handled, true);
+        assert.strictEqual(calls, 2);
+    });
+
+    test('select_org recarrega usando a organização escolhida', async () => {
+        const seen: string[] = [];
+        const fetchRepos = async (s: any) => {
+            seen.push(s.organizationName);
+            return { orgPk: 1, orgName: 'o', organizations: [{ id: 1, name: 'o' }, { id: 2, name: 'dois' }], productPk: 2, productName: 'P', repos: [{ id: 1, name: 'r' }] };
+        };
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), fetchRepos as any);
+        await base.handleMessage({ command: 'request_score' });
+
+        await base.handleMessage({ command: 'select_org', orgPk: 2 });
+
+        assert.strictEqual(seen[seen.length - 1], 'dois');
+    });
+
+    test('clear_secret do token apaga o segredo e volta para not_configured', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'P' });
+        const base = new TestableBase(ctx);
+        await base.handleMessage({ command: 'request_score' });
+        base.webviewInstance.posted.length = 0;
+
+        await base.handleMessage({ command: 'clear_secret', key: 'msgram.token' });
+
+        assert.strictEqual(await ctx.secrets.get('msgram.token'), undefined);
+        const settings = base.webviewInstance.posted.find((m: any) => m.command === 'settings_loaded');
+        assert.strictEqual(settings?.data.hasMsgramToken, false);
+        assert.ok(base.webviewInstance.posted.some((m: any) => m.command === 'not_configured'));
+        assert.strictEqual(base.loadState, 'not_configured');
+    });
+
+    test('open_vscode_settings executa workbench.action.openSettings com o filtro msgram', async () => {
+        const vscode = require('vscode');
+        vscode.commands._executed.length = 0;
+        const base = new TestableBase(makeExtensionContext());
+
+        await base.handleMessage({ command: 'open_vscode_settings' });
+
+        assert.deepStrictEqual(vscode.commands._executed[0], { command: 'workbench.action.openSettings', args: ['msgram'] });
+    });
+
+    test('save_settings com token emite settings_saved e carrega dados', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        base.webviewInstance.posted.length = 0;
+
+        await base.handleMessage({ command: 'save_settings', data: { serviceUrl: 'https://s.com', productName: 'P', msgramServiceToken: 'tok' } });
+
+        const cmds = base.webviewInstance.posted.map((m: any) => m.command);
+        assert.ok(cmds.includes('settings_saved'));
+        assert.ok(cmds.includes('score_loaded'));
+        assert.ok(!cmds.includes('not_configured'));
     });
 });
