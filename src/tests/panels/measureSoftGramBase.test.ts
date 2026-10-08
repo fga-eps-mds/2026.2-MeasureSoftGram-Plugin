@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { MeasureSoftGramBase } from '../../panels/measureSoftGramBase';
+import { FetchRepositoriesFn, FetchScoreForRepoFn, MeasureSoftGramBase } from '../../panels/measureSoftGramBase';
 import type { SettingsDeps } from '../../config/settings';
 
 function makeWebview() {
@@ -69,7 +69,10 @@ function makeExtensionContext(overrides: Partial<{
 function makeFetchRepositories(repos: any[] = [{ id: 1, name: 'repo-a' }]) {
     return async (_settings: any, _log?: any) => ({
         orgPk: 10,
+        orgName: 'org',
+        organizations: [{ id: 10, name: 'org' }],
         productPk: 20,
+        productName: 'P',
         repos,
     });
 }
@@ -106,10 +109,10 @@ class TestableBase extends MeasureSoftGramBase {
     }
 
     protected get _webview() { return this.webviewInstance as any; }
-    protected onLoadStart()           { this.loadStartCalled = true; }
-    protected onScoreLoaded(d: any)   { this.scoreLoadedData = d; }
-    protected onScoreError()          { this.scoreErrorCalled = true; }
-    protected onReposEmpty()          { this.reposEmptyCalled = true; }
+    protected override onLoadStart()         { super.onLoadStart(); this.loadStartCalled = true; }
+    protected override onScoreLoaded(d: any) { super.onScoreLoaded(d); this.scoreLoadedData = d; }
+    protected override onScoreError()        { super.onScoreError(); this.scoreErrorCalled = true; }
+    protected override onReposEmpty()        { super.onReposEmpty(); this.reposEmptyCalled = true; }
 
     public loadPersistedSettings()    { return this._loadPersistedSettings(); }
     public persistSettings(d: any)    { return this._persistSettings(d); }
@@ -121,6 +124,15 @@ class TestableBase extends MeasureSoftGramBase {
     }
     public handleCommonMessage(msg: any, fr = this.fetchRepos, fs = this.fetchScore) {
         return this._handleCommonMessage(msg, fr, fs);
+    }
+    /** Usa os fakes da instância por padrão, para os testes não baterem na rede. */
+    public override handleMessage(
+        msg: any,
+        fr: FetchRepositoriesFn = this.fetchRepos as any,
+        fs: FetchScoreForRepoFn = this.fetchScore as any,
+        ws?: any, fsys?: any, win?: any,
+    ): Promise<boolean> {
+        return super.handleMessage(msg, fr, fs, ws, fsys, win);
     }
     public getSettings() { return this._settings!; }
     public getContext()  { return this._context; }

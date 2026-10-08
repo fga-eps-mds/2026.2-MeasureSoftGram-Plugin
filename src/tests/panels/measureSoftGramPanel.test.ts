@@ -56,7 +56,7 @@ function makeVsWindow(webview: ReturnType<typeof makeWebview>) {
 }
 
 function makeFetchRepos(repos = [{ id: 1, name: 'repo-x' }]) {
-    return async () => ({ repos, orgPk: 1, productPk: 2 });
+    return async () => ({ repos, orgPk: 1, orgName: 'org', organizations: [{ id: 1, name: 'org' }], productPk: 2, productName: 'P' });
 }
 
 function makeFetchScore(result: any = { score: 0.9, noData: false, characteristics: [] }) {

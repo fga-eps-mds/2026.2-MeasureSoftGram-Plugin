@@ -91,7 +91,7 @@ function makeSettingsDepsFor(ctx: any): SettingsDeps {
 }
 
 function makeFetchRepositories(repos: any[] = [{ id: 1, name: 'repo-a' }]) {
-    return async () => ({ orgPk: 10, productPk: 20, repos });
+    return async () => ({ orgPk: 10, orgName: 'org', organizations: [{ id: 10, name: 'org' }], productPk: 20, productName: 'P', repos });
 }
 
 function makeFetchScoreForRepo(result: any = { score: 0.85, noData: false }) {
