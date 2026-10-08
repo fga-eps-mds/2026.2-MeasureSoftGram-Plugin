@@ -236,11 +236,21 @@ suite('MeasureSoftGramPanel — handleMessage: save_action', () => {
     });
 });
 
-suite('MeasureSoftGramPanel — handleMessage: run_action', () => {
+suite('MeasureSoftGramPanel — handleMessage: run_action (via ActRunner)', () => {
     teardown(() => { MeasureSoftGramPanel.currentPanel = undefined; });
 
-    test('cria terminal, exibe e envia o comando docker', async () => {
-        const { panel } = createPanel();
+    function fakeRunner(check: any) {
+        return { isRunning: false, isStopping: false, runCalls: [] as any[],
+            async checkDocker() { return check; },
+            run(o: any) { this.isRunning = true; this.runCalls.push(o); return true; },
+            async stop() {}, dispose() {} };
+    }
+
+    test('salva o workflow e, com Docker ausente, emite analysis_blocked sem abrir terminal', async () => {
+        const { panel, webview, ctx } = createPanel();
+        await (ctx as any).secrets.store('msgram.githubToken', 'ghp');
+        const runner = fakeRunner({ ok: false, reason: 'docker_missing', detail: 'ENOENT' });
+        (panel as any)._actRunner = runner;
         const deps = makeActionDeps();
 
         await panel.handleMessage(
@@ -249,16 +259,16 @@ suite('MeasureSoftGramPanel — handleMessage: run_action', () => {
             deps.workspace as any, deps.fs as any, deps.window as any,
         );
 
-        assert.strictEqual(deps._terminals.length, 1);
-        const t = deps._terminals[0];
-        assert.strictEqual(t.shown, true);
-        assert.ok(t.texts.includes('docker compose up --build --abort-on-container-exit'));
-        assert.strictEqual(t.opts.name, 'MeasureSoftGram · Act');
-        assert.ok(t.opts.env.WORKSPACE_PATH.includes('/fake/workspace'));
+        assert.strictEqual(deps._written.length, 1, 'workflow salvo (ação explícita)');
+        assert.strictEqual(deps._terminals.length, 0, 'nenhum terminal');
+        assert.strictEqual(runner.runCalls.length, 0);
+        const blocked = webview._messages.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(blocked?.reason, 'docker_missing');
     });
 
-    test('run_action sem workspace mostra erro e não cria terminal', async () => {
-        const { panel } = createPanel();
+    test('run_action sem workspace emite analysis_blocked no_workspace', async () => {
+        const { panel, webview } = createPanel();
+        (panel as any)._actRunner = fakeRunner({ ok: true, version: '29' });
         const deps = makeActionDeps({ hasWorkspace: false });
 
         await panel.handleMessage(
@@ -268,7 +278,8 @@ suite('MeasureSoftGramPanel — handleMessage: run_action', () => {
         );
 
         assert.strictEqual(deps._terminals.length, 0);
-        assert.strictEqual(deps._errors.length, 1);
+        const blocked = webview._messages.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(blocked?.reason, 'no_workspace');
     });
 });
 

@@ -788,3 +788,9 @@ body {
 .mn i, .mv { font-family: Roboto, sans-serif; }
 .view-title i { font-size: 16px; }
 .char-row.warn { border-color: var(--msg-warn-border); }
+
+.run-row { display: flex; gap: 8px; width: 100%; }
+.run-btn { flex: 1; justify-content: center; }
+.stop-btn { justify-content: center; }
+.blocked-detail { color: var(--msg-fg-muted); }
+.notif a { color: var(--msg-accent); }

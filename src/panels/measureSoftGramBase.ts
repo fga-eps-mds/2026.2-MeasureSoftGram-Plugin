@@ -12,6 +12,7 @@ import {
     RepoItem,
 } from '../services/msgramApi';
 import {HttpError} from '../services/httpClient';
+import {ActRunner, sharedActRunner} from '../services/actRunner';
 import {
     clearSecret,
     FullSettings,
@@ -80,6 +81,8 @@ export abstract class MeasureSoftGramBase {
     /** Injetáveis nos testes. */
     protected _fetchGrafanaDashboards = defaultFetchGrafanaDashboards;
     protected _fetchGrafanaDashboard = defaultFetchGrafanaDashboard;
+    /** Compartilhado entre painel e barra lateral: uma execução por janela. */
+    protected _actRunner: ActRunner = sharedActRunner();
 
     protected constructor(
         protected readonly _extensionContext: ExtensionContext,
@@ -335,6 +338,13 @@ export abstract class MeasureSoftGramBase {
                 await this._runAction(String(message.yaml), actionDeps);
                 return true;
 
+            case 'stop_analysis':
+                if (this._actRunner.isRunning && this._actionState === 'running') {
+                    this._actionState = 'stopping';
+                    await this._actRunner.stop();
+                }
+                return true;
+
             case 'request_yaml':
                 await this._sendExistingWorkflow(actionDeps);
                 return true;
@@ -539,30 +549,79 @@ export abstract class MeasureSoftGramBase {
     }
 
     /**
-     * Execução local via terminal. Substituída em US5 (T060) pelo
-     * ActRunner com saída transmitida à interface.
+     * Execução local da Action (US5, FR-014): salva o workflow (ação
+     * explícita da pessoa; o editor já mostra o conteúdo mesclado), confere
+     * tokens e Docker, e transmite a saída do act para a aba Saída.
      */
     protected async _runAction(yaml: string, deps: ActionDeps): Promise<void> {
+        if (this._actRunner.isRunning || this._actionState !== 'idle') {
+            this.post({command: 'analysis_blocked', reason: 'already_running'});
+            return;
+        }
+
         let workspacePath: string;
         try {
             workspacePath = await this._saveWorkflowFile(yaml, deps);
         } catch (err) {
-            deps.window.showErrorMessage(`${err}`);
+            this.post({command: 'analysis_blocked', reason: 'no_workspace', detail: `${(err as Error).message ?? err}`});
+            return;
+        }
+
+        const settings = await this._requireSettings();
+        const missing: string[] = [];
+        if (!settings.githubToken) {
+            missing.push('GitHub Token');
+        }
+        if (!settings.token) {
+            missing.push('MSGRAM Service Token');
+        }
+        if (missing.length) {
+            deps.window.showWarningMessage?.(`Configure em Settings antes de executar: ${missing.join(', ')}.`);
+            return;
+        }
+
+        this._actionState = 'checking_docker';
+        const check = await this._actRunner.checkDocker();
+        if (!check.ok) {
+            this._actionState = 'idle';
+            this.logger()(`[ERRO] Docker indisponível (${check.reason}): ${check.detail}`);
+            this.post({command: 'analysis_blocked', reason: check.reason, detail: check.detail});
             return;
         }
 
         const dockerDir = Uri.joinPath(this._extensionContext.extensionUri, 'resources', 'docker').fsPath;
+        const log = this.logger();
 
-        const terminal = deps.window.createTerminal({
-            name: 'MeasureSoftGram · Act',
-            cwd: dockerDir,
-            env: {
-                WORKSPACE_PATH: workspacePath,
-                WORKFLOW_REL_PATH: WORKFLOW_REL_PATH,
+        this._actionState = 'running';
+        this.post({command: 'analysis_started'});
+        log(`[act] Docker ${check.version} · iniciando workflow_dispatch em ${workspacePath}`);
+
+        const started = this._actRunner.run({
+            workspacePath,
+            workflowRelPath: WORKFLOW_REL_PATH,
+            dockerDir,
+            githubToken: settings.githubToken,
+            msgramToken: settings.token,
+            onLine: (line, isError) => {
+                log(`[act] ${line}`);
+                this.post({command: 'output_line', line, isError});
+            },
+            onDone: (result) => {
+                const wasStopping = this._actionState === 'stopping' || result.stopped;
+                this._actionState = 'idle';
+                if (wasStopping) {
+                    log('[act] execução interrompida pela pessoa');
+                    this.post({command: 'analysis_stopped'});
+                } else {
+                    log(`[act] encerrou com código ${result.exitCode}`);
+                    this.post({command: 'analysis_done', success: result.success, exitCode: result.exitCode});
+                }
             },
         });
 
-        terminal.show();
-        terminal.sendText('docker compose up --build --abort-on-container-exit');
+        if (!started) {
+            this._actionState = 'idle';
+            this.post({command: 'analysis_blocked', reason: 'already_running'});
+        }
     }
 }

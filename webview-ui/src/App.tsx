@@ -5,7 +5,7 @@ import {DashboardView} from './components/DashboardView';
 import {GrafanaView} from './components/GrafanaView';
 import {OutputView} from './components/action/OutputView.tsx';
 import {SettingsView} from './components/SettingsView';
-import {ActionView} from './components/action/ActionView.tsx';
+import {ActionView, type ActionBlocked} from './components/action/ActionView.tsx';
 import {NotConfiguredView} from './components/NotConfiguredView';
 import {getVSCodeAPI} from './utils/vscode';
 import {now} from './utils/helpers';
@@ -55,6 +55,7 @@ const App: React.FC = () => {
     const [notifType, setNotifType] = useState<'ok' | 'error'>('ok');
 
     const [isRunning, setIsRunning] = useState(false);
+    const [actionBlocked, setActionBlocked] = useState<ActionBlocked | null>(null);
     const [logLines, setLogLines] = useState<LogLine[]>([]);
 
     const appendLog = useCallback((text: string, isError: boolean) => {
@@ -127,8 +128,14 @@ const App: React.FC = () => {
                     setNotifType('error');
                     break;
 
+                case 'analysis_blocked':
+                    setIsRunning(false);
+                    setActionBlocked({reason: msg.reason, detail: msg.detail});
+                    break;
+
                 case 'analysis_started':
                     setIsRunning(true);
+                    setActionBlocked(null);
                     setLogLines([]);
                     showTab('output');
                     break;
@@ -262,9 +269,14 @@ const App: React.FC = () => {
             return;
         }
         setActionAlert(null);
+        setActionBlocked(null);
         const mergedYaml = applySettingsToYaml(yaml, settings);
         setYaml(mergedYaml);
         vscode.postMessage({command: 'run_action', yaml: mergedYaml});
+    };
+
+    const handleStopAction = () => {
+        vscode.postMessage({command: 'stop_analysis'});
     };
 
     return (
@@ -340,8 +352,10 @@ const App: React.FC = () => {
                         onSave={handleSaveAction}
                         savedFeedback={actionSavedFeedback}
                         onRun={handleRunAction}
+                        onStop={handleStopAction}
                         running={isRunning}
                         alert={actionAlert}
+                        blocked={actionBlocked}
                         yamlExists={yamlExists}
                     />
                 )}
