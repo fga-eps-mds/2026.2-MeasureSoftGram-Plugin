@@ -120,4 +120,19 @@ describe('ActionView', () => {
             screen.getByTestId('copy-button')
         ).toHaveTextContent('foo: bar');
     });
+
+    it('mostra "arquivo existente" quando yamlExists é true', () => {
+        render(<ActionView {...defaultProps} yamlExists={true}/>);
+        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/arquivo existente/i);
+    });
+
+    it('mostra "novo arquivo" quando yamlExists é false', () => {
+        render(<ActionView {...defaultProps} yamlExists={false}/>);
+        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/novo arquivo/i);
+    });
+
+    it('não mostra o selo enquanto não sabe se o arquivo existe', () => {
+        render(<ActionView {...defaultProps} yamlExists={null}/>);
+        expect(screen.queryByTestId('yaml-origin')).not.toBeInTheDocument();
+    });
 });
