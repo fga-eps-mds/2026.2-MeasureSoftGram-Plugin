@@ -248,55 +248,50 @@ suite('MeasureSoftGramSidebar', () => {
         assert.ok(msg);
     });
 
-    test('run_action abre terminal com comando docker', async () => {
+    test('run_action com Docker parado emite analysis_blocked docker_stopped e não abre terminal', async () => {
         const ctx = makeExtensionContext();
+        await ctx.secrets.store('msgram.githubToken', 'ghp');
         const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
-        sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
+        const wv = makeWebview();
+        sidebar.resolveWebviewView(makeWebviewView(wv));
+        (sidebar as any)._actRunner = {
+            isRunning: false, isStopping: false,
+            async checkDocker() { return { ok: false, reason: 'docker_stopped', detail: 'daemon off' }; },
+            run() { throw new Error('não deveria rodar'); }, async stop() {}, dispose() {},
+        };
         const { workspace, fs } = makeWorkspaceFakes();
         const terminals: any[] = [];
-        const fakeWindow = {
-            createTerminal: (opts: any) => {
-                const t = { ...opts, shown: false, sentText: '', show() { this.shown = true; }, sendText(s: string) { this.sentText = s; } };
-                terminals.push(t);
-                return t;
-            },
-            showErrorMessage: () => {},
-        };
+        const fakeWindow = { createTerminal: (o: any) => { terminals.push(o); return o; }, showErrorMessage: () => {}, showWarningMessage: () => {} };
 
         await sidebar.handleMessage(
             { command: 'run_action', yaml: 'name: MeasureSoftGram' },
-            makeFetchRepositories(),
-            makeFetchScoreForRepo(),
-            workspace as any,
-            fs as any,
-            fakeWindow as any,
+            makeFetchRepositories(), makeFetchScoreForRepo(),
+            workspace as any, fs as any, fakeWindow as any,
         );
 
-        assert.strictEqual(terminals.length, 1);
-        assert.ok(terminals[0].sentText.includes('docker compose'));
-        assert.strictEqual(terminals[0].shown, true);
+        assert.strictEqual(terminals.length, 0);
+        const blocked = wv.posted.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(blocked?.reason, 'docker_stopped');
+        assert.strictEqual(blocked?.detail, 'daemon off');
     });
 
-    test('run_action sem workspace mostra mensagem de erro', async () => {
+    test('run_action sem workspace emite analysis_blocked no_workspace', async () => {
         const ctx = makeExtensionContext();
         const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
-        sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
-        let errorShown = '';
-        const fakeWindow = {
-            createTerminal: () => ({ show: () => {}, sendText: () => {} }),
-            showErrorMessage: (msg: string) => { errorShown = msg; },
-        };
+        const wv = makeWebview();
+        sidebar.resolveWebviewView(makeWebviewView(wv));
+        (sidebar as any)._actRunner = { isRunning: false, isStopping: false, async checkDocker() { return { ok: true, version: '29' }; }, run() { return true; }, async stop() {}, dispose() {} };
         const emptyWorkspace = { workspaceFolders: undefined };
 
         await sidebar.handleMessage(
             { command: 'run_action', yaml: 'name: test' },
-            makeFetchRepositories(),
-            makeFetchScoreForRepo(),
+            makeFetchRepositories(), makeFetchScoreForRepo(),
             emptyWorkspace as any,
             { mkdir: async () => {}, writeFile: async () => {} } as any,
-            fakeWindow as any,
+            { createTerminal: () => ({}), showErrorMessage: () => {}, showWarningMessage: () => {} } as any,
         );
 
-        assert.ok(errorShown.length > 0);
+        const blocked = wv.posted.find((m: any) => m.command === 'analysis_blocked');
+        assert.strictEqual(blocked?.reason, 'no_workspace');
     });
 });
