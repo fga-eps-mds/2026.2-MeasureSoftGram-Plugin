@@ -1,76 +1,172 @@
-import {ExtensionContext, Uri, Webview} from 'vscode';
+import {Disposable, ExtensionContext, Uri, Webview, window, workspace} from 'vscode';
+import * as defaultFs from 'fs/promises';
+import * as path from 'path';
 import {getNonce, getUri} from '../utilities/utilities';
+import {getOutputChannel} from '../utilities/log';
 import {
     fetchGrafanaDashboard as defaultFetchGrafanaDashboard,
     fetchGrafanaDashboards as defaultFetchGrafanaDashboards,
     fetchRepositories as defaultFetchRepositories,
     fetchScoreForRepo as defaultFetchScoreForRepo,
-    MsgramSettings,
     RepoContext,
     RepoItem,
 } from '../services/msgramApi';
+import {HttpError} from '../services/httpClient';
+import {
+    FullSettings,
+    loadSettings,
+    loadSettingsForUi,
+    makeSettingsDeps,
+    saveSettings,
+    SettingsDeps,
+} from '../config/settings';
+import type {ExtensionMessage, PanelMessage, ScoreErrorKind, SettingsPayload} from './messages';
+import type {MsgramStatusBar} from '../statusbar/msgramStatusBar';
 
 export type FetchRepositoriesFn = typeof defaultFetchRepositories;
 export type FetchScoreForRepoFn = typeof defaultFetchScoreForRepo;
 
-export const KEY_SERVICE_URL = 'msgram.serviceUrl';
-export const KEY_PRODUCT_NAME = 'msgram.productName';
-export const SECRET_TOKEN = 'msgram.token';
+export const WORKFLOW_REL_PATH = '.github/workflows/msgram.yml';
 
-export const DEFAULT_SETTINGS: MsgramSettings = {
-    serviceUrl: 'https://msgram-api.synaptha.com/',
-    token: '',
-    productName: 'measuresoftgram 2026',
-};
+export type LoadState = 'not_configured' | 'loading' | 'ready' | 'error';
+export type ActionRunState = 'idle' | 'checking_docker' | 'running' | 'stopping';
 
+/** Dependências de filesystem/VS Code usadas pela aba Action, injetáveis nos testes. */
+export interface ActionDeps {
+    workspace: { workspaceFolders: typeof workspace.workspaceFolders };
+    fs: {
+        mkdir: typeof defaultFs.mkdir;
+        writeFile: typeof defaultFs.writeFile;
+        readFile?: typeof defaultFs.readFile;
+    };
+    window: {
+        createTerminal: typeof window.createTerminal;
+        showErrorMessage: typeof window.showErrorMessage;
+        showWarningMessage?: typeof window.showWarningMessage;
+    };
+}
+
+function defaultActionDeps(): ActionDeps {
+    return {
+        workspace,
+        fs: {mkdir: defaultFs.mkdir, writeFile: defaultFs.writeFile, readFile: defaultFs.readFile},
+        window: {
+            createTerminal: window.createTerminal.bind(window),
+            showErrorMessage: window.showErrorMessage.bind(window),
+            showWarningMessage: window.showWarningMessage?.bind(window),
+        },
+    };
+}
+
+/**
+ * Classe base de painel e barra lateral.
+ *
+ * É a única dona de: configurações carregadas, contexto de repositórios,
+ * repositório selecionado, estado de carregamento, estado da execução
+ * local e da barra de status. As subclasses só expõem o `Webview`.
+ */
 export abstract class MeasureSoftGramBase {
-    protected _settings: MsgramSettings = {...DEFAULT_SETTINGS};
+    protected _settings: FullSettings | null = null;
     protected _context: RepoContext | null = null;
     protected _selectedRepo: RepoItem | null = null;
+    protected _loadState: LoadState = 'not_configured';
+    protected _actionState: ActionRunState = 'idle';
+    protected readonly _settingsDeps: SettingsDeps;
+    protected readonly _disposables: Disposable[] = [];
 
-    constructor(protected readonly _extensionContext: ExtensionContext) {
+    protected constructor(
+        protected readonly _extensionContext: ExtensionContext,
+        protected readonly _statusBar?: MsgramStatusBar,
+        settingsDeps?: SettingsDeps,
+    ) {
+        this._settingsDeps = settingsDeps ?? makeSettingsDeps(_extensionContext);
     }
 
     protected abstract get _webview(): Webview | undefined;
 
-    protected onScoreLoaded(_data: any): void {
+    // ── Acesso para subclasses/testes ──────────────────────────────────────
+
+    public get loadState(): LoadState {
+        return this._loadState;
+    }
+
+    public get actionState(): ActionRunState {
+        return this._actionState;
+    }
+
+    public dispose(): void {
+        while (this._disposables.length) {
+            this._disposables.pop()?.dispose();
+        }
+    }
+
+    // ── Hooks (subclasses podem estender; a base já cuida da status bar) ───
+
+    protected onLoadStart(): void {
+        this._loadState = 'loading';
+        this._statusBar?.setLoading();
+    }
+
+    protected onScoreLoaded(data: { score: number; noData?: boolean }): void {
+        this._loadState = 'ready';
+        if (data.noData) {
+            this._statusBar?.setNoData();
+        } else {
+            this._statusBar?.setScore(data.score);
+        }
     }
 
     protected onScoreError(): void {
+        this._loadState = 'error';
+        this._statusBar?.setError();
     }
 
     protected onReposEmpty(): void {
+        this._loadState = 'error';
+        this._statusBar?.setError();
     }
 
-    protected onLoadStart(): void {
+    protected onNotConfigured(): void {
+        this._loadState = 'not_configured';
+        this._statusBar?.setNotConfigured();
     }
 
-    protected logger(): ((msg: string) => void) | undefined {
-        return undefined;
+    protected logger(): (msg: string) => void {
+        return (msg: string) => getOutputChannel().appendLine(msg);
     }
 
-    protected async _loadPersistedSettings(): Promise<void> {
-        const ctx = this._extensionContext;
-        const serviceUrl = ctx.workspaceState.get<string>(KEY_SERVICE_URL, DEFAULT_SETTINGS.serviceUrl);
-        const productName = ctx.workspaceState.get<string>(KEY_PRODUCT_NAME, DEFAULT_SETTINGS.productName);
-        const token = (await ctx.secrets.get(SECRET_TOKEN)) ?? '';
-        this._settings = {serviceUrl, token, productName};
+    protected post(message: ExtensionMessage): void {
+        this._webview?.postMessage(message);
     }
 
-    protected async _persistSettings(data: {
-        serviceUrl: string;
-        msgramServiceToken: string;
-        productName: string;
-    }): Promise<void> {
-        const ctx = this._extensionContext;
-        await ctx.workspaceState.update(KEY_SERVICE_URL, data.serviceUrl);
-        await ctx.workspaceState.update(KEY_PRODUCT_NAME, data.productName);
-        await ctx.secrets.store(SECRET_TOKEN, data.msgramServiceToken);
-        this._settings = {
-            serviceUrl: data.serviceUrl,
-            token: data.msgramServiceToken,
-            productName: data.productName,
-        };
+    // ── Configurações ──────────────────────────────────────────────────────
+
+    protected async _loadPersistedSettings(): Promise<FullSettings> {
+        this._settings = await loadSettings(this._settingsDeps);
+        return this._settings;
+    }
+
+    protected async _persistSettings(data: SettingsPayload): Promise<void> {
+        await saveSettings(data, this._settingsDeps);
+        this._settings = await loadSettings(this._settingsDeps);
+    }
+
+    protected async _postSettingsLoaded(): Promise<void> {
+        this.post({command: 'settings_loaded', data: await loadSettingsForUi(this._settingsDeps)});
+    }
+
+    protected async _requireSettings(): Promise<FullSettings> {
+        return this._settings ?? (await this._loadPersistedSettings());
+    }
+
+    // ── Carregamento de dados ──────────────────────────────────────────────
+
+    protected _errorKind(err: unknown): ScoreErrorKind {
+        return err instanceof HttpError ? err.kind : 'other';
+    }
+
+    protected _errorMessage(err: unknown, fallback: string): string {
+        return err instanceof Error && err.message ? err.message : fallback;
     }
 
     protected async _loadReposAndScore(
@@ -83,26 +179,27 @@ export abstract class MeasureSoftGramBase {
         }
 
         this.onLoadStart();
-        webview.postMessage({command: 'score_loading'});
+        this.post({command: 'score_loading'});
 
         try {
-            this._context = await fetchRepos(this._settings, this.logger());
+            const settings = await this._requireSettings();
+            this._context = await fetchRepos(settings, this.logger());
             const repos = this._context.repos;
-            webview.postMessage({command: 'repos_loaded', repos});
+            this.post({command: 'repos_loaded', repos});
 
             if (!repos.length) {
                 this.onReposEmpty();
-                webview.postMessage({command: 'score_error', message: 'Nenhum repositório encontrado.'});
+                this.post({command: 'score_error', message: 'Nenhum repositório encontrado.', kind: 'not_found'});
                 return;
             }
 
             this._selectedRepo = repos[0];
             await this._loadScoreForSelected(fetchScore);
-        } catch (err: any) {
-            const msg = err.message ?? 'Erro ao buscar repositórios.';
-            this.logger()?.(`[ERRO] ${msg}`);
+        } catch (err) {
+            const message = this._errorMessage(err, 'Erro ao buscar repositórios.');
+            this.logger()(`[ERRO] ${message}`);
             this.onScoreError();
-            webview.postMessage({command: 'score_error', message: msg});
+            this.post({command: 'score_error', message, kind: this._errorKind(err)});
         }
     }
 
@@ -115,11 +212,12 @@ export abstract class MeasureSoftGramBase {
         }
 
         this.onLoadStart();
-        webview.postMessage({command: 'score_loading'});
+        this.post({command: 'score_loading'});
 
         try {
+            const settings = await this._requireSettings();
             const data = await fetchScore(
-                this._settings,
+                settings,
                 this._context.orgPk,
                 this._context.productPk,
                 this._selectedRepo.id,
@@ -127,14 +225,16 @@ export abstract class MeasureSoftGramBase {
                 this.logger(),
             );
             this.onScoreLoaded(data);
-            webview.postMessage({command: 'score_loaded', data});
-        } catch (err: any) {
-            const msg = err.message ?? 'Erro ao buscar métricas.';
-            this.logger()?.(`[ERRO] ${msg}`);
+            this.post({command: 'score_loaded', data: data as any});
+        } catch (err) {
+            const message = this._errorMessage(err, 'Erro ao buscar métricas.');
+            this.logger()(`[ERRO] ${message}`);
             this.onScoreError();
-            webview.postMessage({command: 'score_error', message: msg});
+            this.post({command: 'score_error', message, kind: this._errorKind(err)});
         }
     }
+
+    // ── HTML da webview ────────────────────────────────────────────────────
 
     protected _getWebviewContent(webview: Webview, extensionUri: Uri): string {
         const stylesUri = getUri(webview, extensionUri, ['webview-ui', 'build', 'assets', 'index.css']);
@@ -143,7 +243,7 @@ export abstract class MeasureSoftGramBase {
 
         return /*html*/ `
       <!DOCTYPE html>
-      <html lang="en">
+      <html lang="pt-BR">
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -159,8 +259,58 @@ export abstract class MeasureSoftGramBase {
     `;
     }
 
+    protected _webviewOptions() {
+        return {
+            enableScripts: true,
+            localResourceRoots: [
+                Uri.joinPath(this._extensionContext.extensionUri, 'out'),
+                Uri.joinPath(this._extensionContext.extensionUri, 'webview-ui/build'),
+            ],
+        };
+    }
+
+    // ── Despacho de mensagens (único ponto de entrada) ─────────────────────
+
+    /**
+     * Trata uma mensagem vinda da interface. Os parâmetros extras existem
+     * para os testes injetarem fakes; em produção só `message` é passado.
+     */
+    public async handleMessage(
+        message: PanelMessage | { command: string; [k: string]: unknown },
+        fetchRepos?: FetchRepositoriesFn,
+        fetchScore?: FetchScoreForRepoFn,
+        ws?: ActionDeps['workspace'],
+        fs?: ActionDeps['fs'],
+        win?: ActionDeps['window'],
+    ): Promise<boolean> {
+        const defaults = defaultActionDeps();
+        const actionDeps: ActionDeps = {
+            workspace: ws ?? defaults.workspace,
+            fs: fs ?? defaults.fs,
+            window: win ?? defaults.window,
+        };
+
+        switch (message.command) {
+            case 'save_action':
+                try {
+                    await this._saveWorkflowFile(String(message.yaml), actionDeps);
+                    this.post({command: 'action_saved'});
+                } catch (err) {
+                    actionDeps.window.showErrorMessage(`Não foi possível salvar o workflow: ${err}`);
+                }
+                return true;
+
+            case 'run_action':
+                await this._runAction(String(message.yaml), actionDeps);
+                return true;
+
+            default:
+                return this._handleCommonMessage(message, fetchRepos, fetchScore);
+        }
+    }
+
     protected async _handleCommonMessage(
-        message: any,
+        message: { command: string; [k: string]: unknown },
         fetchRepos: FetchRepositoriesFn = defaultFetchRepositories,
         fetchScore: FetchScoreForRepoFn = defaultFetchScoreForRepo,
     ): Promise<boolean> {
@@ -172,13 +322,7 @@ export abstract class MeasureSoftGramBase {
         switch (message.command) {
             case 'request_score':
                 await this._loadPersistedSettings();
-                webview.postMessage({
-                    command: 'settings_loaded',
-                    data: {
-                        serviceUrl: this._settings.serviceUrl,
-                        productName: this._settings.productName,
-                    },
-                });
+                await this._postSettingsLoaded();
                 await this._loadReposAndScore(fetchRepos, fetchScore);
                 return true;
 
@@ -195,10 +339,11 @@ export abstract class MeasureSoftGramBase {
             }
 
             case 'save_settings':
-                await this._persistSettings(message.data);
+                await this._persistSettings(message.data as SettingsPayload);
                 this._context = null;
                 this._selectedRepo = null;
-                webview.postMessage({command: 'settings_saved'});
+                this.post({command: 'settings_saved'});
+                await this._postSettingsLoaded();
                 await this._loadReposAndScore(fetchRepos, fetchScore);
                 return true;
 
@@ -207,7 +352,7 @@ export abstract class MeasureSoftGramBase {
                 return true;
 
             case 'request_grafana_dashboard':
-                await this._loadGrafanaDashboardUrl(message.uid);
+                await this._loadGrafanaDashboardUrl(String(message.uid));
                 return true;
 
             default:
@@ -215,33 +360,85 @@ export abstract class MeasureSoftGramBase {
         }
     }
 
+    // ── Grafana ────────────────────────────────────────────────────────────
+
     private async _loadGrafanaDashboards(): Promise<void> {
-        const webview = this._webview;
-        if (!webview) { return; }
-        webview.postMessage({command: 'grafana_loading'});
+        if (!this._webview) {
+            return;
+        }
+        this.post({command: 'grafana_loading'});
         try {
-            const dashboards = await defaultFetchGrafanaDashboards(this._settings, this.logger());
-            webview.postMessage({command: 'grafana_dashboards_loaded', dashboards});
-        } catch (err: any) {
-            webview.postMessage({command: 'grafana_error', message: err.message ?? 'Erro ao buscar dashboards do Grafana.'});
+            const settings = await this._requireSettings();
+            const dashboards = await defaultFetchGrafanaDashboards(settings, this.logger());
+            this.post({command: 'grafana_dashboards_loaded', dashboards});
+        } catch (err) {
+            this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboards do Grafana.')});
         }
     }
 
     private async _loadGrafanaDashboardUrl(uid: string): Promise<void> {
-        const webview = this._webview;
-        if (!webview || !this._context) { return; }
-        webview.postMessage({command: 'grafana_loading'});
+        if (!this._webview || !this._context) {
+            return;
+        }
+        this.post({command: 'grafana_loading'});
         try {
+            const settings = await this._requireSettings();
             const detail = await defaultFetchGrafanaDashboard(
-                this._settings,
+                settings,
                 uid,
                 this._context.productPk,
                 this._selectedRepo?.id,
                 this.logger(),
             );
-            webview.postMessage({command: 'grafana_dashboard_loaded', url: detail.grafana_url, title: detail.title});
-        } catch (err: any) {
-            webview.postMessage({command: 'grafana_error', message: err.message ?? 'Erro ao buscar dashboard do Grafana.'});
+            this.post({command: 'grafana_dashboard_loaded', url: detail.grafana_url, title: detail.title});
+        } catch (err) {
+            this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboard do Grafana.')});
         }
+    }
+
+    // ── Action (compartilhado por painel e barra lateral) ──────────────────
+
+    protected _workspacePath(deps: ActionDeps): string {
+        const folder = deps.workspace.workspaceFolders?.[0];
+        if (!folder) {
+            throw new Error('Abra uma pasta/workspace antes de salvar o workflow.');
+        }
+        return folder.uri.fsPath;
+    }
+
+    protected async _saveWorkflowFile(yaml: string, deps: ActionDeps): Promise<string> {
+        const workspacePath = this._workspacePath(deps);
+        const workflowAbsPath = path.join(workspacePath, WORKFLOW_REL_PATH);
+        await deps.fs.mkdir(path.dirname(workflowAbsPath), {recursive: true});
+        await deps.fs.writeFile(workflowAbsPath, yaml, 'utf-8');
+        return workspacePath;
+    }
+
+    /**
+     * Execução local via terminal. Substituída em US5 (T060) pelo
+     * ActRunner com saída transmitida à interface.
+     */
+    protected async _runAction(yaml: string, deps: ActionDeps): Promise<void> {
+        let workspacePath: string;
+        try {
+            workspacePath = await this._saveWorkflowFile(yaml, deps);
+        } catch (err) {
+            deps.window.showErrorMessage(`${err}`);
+            return;
+        }
+
+        const dockerDir = Uri.joinPath(this._extensionContext.extensionUri, 'resources', 'docker').fsPath;
+
+        const terminal = deps.window.createTerminal({
+            name: 'MeasureSoftGram · Act',
+            cwd: dockerDir,
+            env: {
+                WORKSPACE_PATH: workspacePath,
+                WORKFLOW_REL_PATH: WORKFLOW_REL_PATH,
+            },
+        });
+
+        terminal.show();
+        terminal.sendText('docker compose up --build --abort-on-container-exit');
     }
 }
