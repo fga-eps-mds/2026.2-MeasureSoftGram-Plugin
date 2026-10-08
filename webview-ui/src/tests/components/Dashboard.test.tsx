@@ -6,10 +6,12 @@ import type { ScoreData } from '../../types';
 const mockScoreData: ScoreData = {
     score: 0.82,
     noData: false,
+    lastAnalysisAt: '2026-10-01T00:00:00Z',
+    hasGoal: true,
     characteristics: [
-        { name: 'Maintainability', value: 0.85, goal: 0.80 },
-        { name: 'Reliability', value: 0.60, goal: 0.75 },
-        { name: 'Performance', value: 0.90, goal: 0.70 },
+        { key: 'maintainability', name: 'Maintainability', value: 0.85, goal: 0.80, measuredAt: '2026-10-01T00:00:00Z' },
+        { key: 'reliability', name: 'Reliability', value: 0.60, goal: 0.75, measuredAt: '2026-10-01T00:00:00Z' },
+        { key: 'performance', name: 'Performance', value: 0.90, goal: 0.70, measuredAt: '2026-10-01T00:00:00Z' },
     ],
 };
 
@@ -81,7 +83,7 @@ describe('DashboardView', () => {
         it('deve exibir a única característica no aviso de commit', () => {
             const scoreData = {
                 ...mockScoreData,
-                characteristics: [{ name: 'Reliability', value: 0.60, goal: 0.75 }],
+                characteristics: [{ key: 'reliability', name: 'Reliability', value: 0.60, goal: 0.75, measuredAt: '2026-10-01T00:00:00Z' }],
             };
             render(<DashboardView {...defaultProps} scoreData={scoreData} showCommitWarn={true} />);
 
@@ -92,9 +94,9 @@ describe('DashboardView', () => {
             const scoreData = {
                 ...mockScoreData,
                 characteristics: [
-                    { name: 'Maintainability', value: 0.40, goal: 0.45 },
-                    { name: 'Reliability', value: 0.60, goal: 0.90 },
-                    { name: 'Performance', value: 0.80, goal: 0.70 },
+                    { key: 'maintainability', name: 'Maintainability', value: 0.40, goal: 0.45, measuredAt: '2026-10-01T00:00:00Z' },
+                    { key: 'reliability', name: 'Reliability', value: 0.60, goal: 0.90, measuredAt: '2026-10-01T00:00:00Z' },
+                    { key: 'performance', name: 'Performance', value: 0.80, goal: 0.70, measuredAt: '2026-10-01T00:00:00Z' },
                 ],
             };
             render(<DashboardView {...defaultProps} scoreData={scoreData} showCommitWarn={true} />);

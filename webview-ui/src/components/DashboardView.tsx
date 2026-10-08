@@ -21,15 +21,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                                                             }) => {
     const score = scoreData?.score ?? 0;
     const scorePct = (score * 100).toFixed(0);
-    const avgGoal = scoreData?.characteristics.length
-        ? scoreData.characteristics.reduce((s, c) => s + c.goal, 0) / scoreData.characteristics.length
+    const withGoal = (scoreData?.characteristics ?? []).filter(
+        (c): c is typeof c & {goal: number} => c.goal !== null,
+    );
+    const avgGoal = withGoal.length
+        ? withGoal.reduce((s, c) => s + c.goal, 0) / withGoal.length
         : 0.7;
 
-    const worstChar = scoreData?.characteristics.length
-        ? scoreData.characteristics.reduce(
+    const worstChar = withGoal.length
+        ? withGoal.reduce(
             (worst, c) =>
                 c.value - c.goal < worst.value - worst.goal ? c : worst,
-            scoreData.characteristics[0],
+            withGoal[0],
         )
         : undefined;
 
@@ -128,7 +131,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div id="chars-dashboard">
                 {scoreData?.characteristics.map((c) => {
                     const status = getCharStatus(c.value, c.goal);
-                    const mark = c.value >= c.goal ? '✓' : '~';
+                    const mark = c.goal === null || c.value >= c.goal ? '✓' : '~';
                     return (
                         <div
                             key={c.name}
@@ -139,7 +142,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <span className="char-name">{c.name}</span>
                             <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
                             <span className="char-goal">
-                meta {c.goal.toFixed(2)} {mark}
+                meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
               </span>
                         </div>
                     );

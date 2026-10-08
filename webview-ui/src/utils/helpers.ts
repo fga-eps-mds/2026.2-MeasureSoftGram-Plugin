@@ -15,7 +15,8 @@ export function escHtml(str: string): string {
 
 export type StatusColor = 'ok' | 'warn' | 'fail';
 
-export function getCharStatus(value: number, goal: number): StatusColor {
+export function getCharStatus(value: number, goal: number | null): StatusColor {
+    if (goal === null) return 'ok';
     if (value >= goal) return 'ok';
     if (value >= goal * 0.9) return 'warn';
     return 'fail';

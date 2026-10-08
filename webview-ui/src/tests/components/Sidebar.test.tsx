@@ -17,9 +17,12 @@ const REPOS: RepoItem[] = [
 
 const SCORE_DATA: ScoreData = {
     score: 0.87,
+    noData: false,
+    lastAnalysisAt: '2026-10-01T00:00:00Z',
+    hasGoal: true,
     characteristics: [
-        {name: 'Reliability', value: 0.9, goal: 0.8},
-        {name: 'Maintainability', value: 0.75, goal: 0.85},
+        { key: 'reliability', name: 'Reliability', value: 0.9, goal: 0.8, measuredAt: '2026-10-01T00:00:00Z' },
+        { key: 'maintainability', name: 'Maintainability', value: 0.75, goal: 0.85, measuredAt: '2026-10-01T00:00:00Z' },
     ],
 };
 
@@ -156,7 +159,7 @@ describe('Sidebar', () => {
         });
 
         it('deve exibir "nenhum dado disponível" quando noData', () => {
-            render(<Sidebar {...DEFAULT_PROPS} scoreData={{score: 0, characteristics: [], noData: true}}/>);
+            render(<Sidebar {...DEFAULT_PROPS} scoreData={{score: 0, characteristics: [], noData: true, lastAnalysisAt: null, hasGoal: false}}/>);
             expect(screen.getByText('nenhum dado disponível')).toBeInTheDocument();
         });
 
