@@ -31,7 +31,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
       <div className="view-header">
         <div>
           <div className="view-title">
-            <i className="ti ti-chart-area" style={{ color: '#2B4D6F', fontSize: 16 }} />
+            <i className="ti ti-chart-area" aria-hidden="true" />
             <span>Grafana Dashboards</span>
           </div>
           <div className="view-sub">
@@ -58,7 +58,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
 
       {error && (
         <div className="notif warn-n" style={{ marginBottom: 12 }}>
-          <i className="ti ti-alert-circle" style={{ color: '#D13310' }} />
+          <i className="ti ti-alert-circle" aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
@@ -116,7 +116,10 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
           src={iframeUrl!}
           className="grafana-iframe"
           title={iframeTitle ?? 'Grafana Dashboard'}
-          frameBorder="0"
+          // allow-same-origin: o Grafana precisa da própria sessão; allow-popups: "abrir no navegador".
+          // Sem allow-top-navigation nem allow-forms: o dashboard não sai do iframe.
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          referrerPolicy="no-referrer"
           allowFullScreen
         />
       )}
