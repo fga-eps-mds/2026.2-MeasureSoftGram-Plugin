@@ -6,9 +6,9 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/license-AGPL--v3-orange.svg)](https://www.gnu.org/licenses/agpl-3.0)
 &nbsp;
-[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue.svg)](https://marketplace.visualstudio.com/vscode)
+[![VS Code Marketplace](https://img.shields.io/badge/VS%20Code-Marketplace-blue.svg)](https://marketplace.visualstudio.com/items?itemName=MeasureSoftGram.measuresoftgram)
 &nbsp;
-[![Site Oficial](https://img.shields.io/badge/Site-MeasureSoftGram-green.svg)](https://github.com/fga-eps-mds/MeasureSoftGram-Service)
+[![Site Oficial](https://img.shields.io/badge/Site-MeasureSoftGram-green.svg)](https://msgram.lappis.rocks/)
 
 [Instalar Extensão](#instalação) · [Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Documentação](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin)
 
@@ -18,7 +18,7 @@
 
 ## Visão geral
 
-O painel exibe o indicador multidimensional da qualidade de software **TSQMI**, as três características de qualidade com valores e metas definidas pela equipe, e emite alertas de regressão antes de cada commit.
+O painel exibe o indicador multidimensional da qualidade de software **TSQMI**, as características de qualidade com valores e metas definidas pela equipe no MeasureSoftGram, a data da última análise, e avisa quando alguma característica fica abaixo da meta.
 
 ![Painel principal do plugin mostrando score 0.86 e características Reliability, Maintainability e Functional Suitability](https://raw.githubusercontent.com/fga-eps-mds/MeasureSoftGram-Plugin/refs/heads/develop/assets/painel-principal.png)
 ---
@@ -26,7 +26,7 @@ O painel exibe o indicador multidimensional da qualidade de software **TSQMI**, 
 ## O que o plugin faz
 
 - **Indicador Multidimensional da Qualidade Geral/Total do Software (TSQMI)** - um único número de 0 a 1 que resume a saúde do projeto, calculado por um metamodelo algébrico original (produto de Hadamard + norma de Frobenius).
-- **Três dimensões de qualidade** - Confiabilidade, Manutenibilidade e Adequação Funcional, cada uma com valor atual e meta configurável.
+- **Características de qualidade** - Confiabilidade, Manutenibilidade e Adequação Funcional, cada uma com valor atual e a meta definida pela equipe no serviço.
 - **Dashboards Grafana embutidos** - quatro painéis analíticos carregados diretamente dentro do VS Code, sem abrir o browser.
 - **Visibilidade de log** - todas as chamadas à API ficam visíveis no painel Output do VS Code para fácil diagnóstico.
 - **MeasureSoftGram Action** - executa a action que publica a qualidade de software direto no MeasureSoftGram.
@@ -36,10 +36,16 @@ O painel exibe o indicador multidimensional da qualidade de software **TSQMI**, 
 
 ## Instalação
 
-1. Instale a extensão no VS Code e crie sua conta em no [MeasureSoftGram](https://github.com/fga-eps-mds/MeasureSoftGram-Service)
-2. Clique no ícone **MeasureSoftGram** na Activity Bar lateral
-3. Ou acesse via paleta de comandos: `Ctrl+Shift+P` → `MeasureSoftGram: Abrir Painel`
-4. Faça login com sua conta - pronto.
+1. Instale a extensão pelo [Marketplace](https://marketplace.visualstudio.com/items?itemName=MeasureSoftGram.measuresoftgram).
+2. Crie sua conta no [MeasureSoftGram](https://msgram.lappis.rocks/) e gere um **token de API** no seu perfil. Cadastre (ou peça acesso a) o **produto** que você quer acompanhar.
+3. Clique no ícone **MeasureSoftGram** na Activity Bar, ou use `Ctrl+Shift+P` → `MeasureSoftGram: Abrir MeasureSoftGram (Panel)`.
+4. Na aba **Config**, informe:
+   - **MSGRAM Service URL**: já vem preenchida com `https://msgram.lappis.rocks`. Só mude se usar outra instância.
+   - **MSGRAM Service Token**: o token gerado no passo 2. Ele fica guardado no Secret Storage do VS Code.
+   - **Product Name**: o nome exato do produto cadastrado no serviço.
+5. Clique em **Salvar**. O painel carrega os dados reais do produto.
+
+> **Sem token a extensão não mostra nenhum dado.** Em vez de um score, você vê a tela "Extensão não está configurada" com o que falta preencher. A URL e o nome do produto também podem ser editados em `settings.json` (`msgram.serviceUrl`, `msgram.productName`).
 
 ---
 
