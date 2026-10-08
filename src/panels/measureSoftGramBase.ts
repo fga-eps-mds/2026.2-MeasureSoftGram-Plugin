@@ -77,6 +77,9 @@ export abstract class MeasureSoftGramBase {
     protected _orgNameOverride: string | null = null;
     protected readonly _settingsDeps: SettingsDeps;
     protected readonly _disposables: Disposable[] = [];
+    /** Injetáveis nos testes. */
+    protected _fetchGrafanaDashboards = defaultFetchGrafanaDashboards;
+    protected _fetchGrafanaDashboard = defaultFetchGrafanaDashboard;
 
     protected constructor(
         protected readonly _extensionContext: ExtensionContext,
@@ -275,7 +278,7 @@ export abstract class MeasureSoftGramBase {
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; script-src 'nonce-${nonce}'; frame-src http: https:;">
+          <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}'; img-src ${webview.cspSource} https:; frame-src https:;">
           <link rel="stylesheet" type="text/css" href="${stylesUri}">
           <title>MeasureSoftGram</title>
         </head>
@@ -437,7 +440,7 @@ export abstract class MeasureSoftGramBase {
         this.post({command: 'grafana_loading'});
         try {
             const settings = await this._requireSettings();
-            const dashboards = await defaultFetchGrafanaDashboards(settings, this.logger());
+            const dashboards = await this._fetchGrafanaDashboards(settings, this.logger());
             this.post({command: 'grafana_dashboards_loaded', dashboards});
         } catch (err) {
             this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboards do Grafana.')});
@@ -451,16 +454,41 @@ export abstract class MeasureSoftGramBase {
         this.post({command: 'grafana_loading'});
         try {
             const settings = await this._requireSettings();
-            const detail = await defaultFetchGrafanaDashboard(
+            const detail = await this._fetchGrafanaDashboard(
                 settings,
                 uid,
                 this._context.productPk,
                 this._selectedRepo?.id,
                 this.logger(),
             );
+            this._assertGrafanaUrlAllowed(detail.grafana_url, settings.grafanaAllowedHosts);
             this.post({command: 'grafana_dashboard_loaded', url: detail.grafana_url, title: detail.title});
         } catch (err) {
             this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboard do Grafana.')});
+        }
+    }
+
+    /**
+     * Só carrega dashboards por HTTPS e, se msgram.grafanaAllowedHosts estiver
+     * configurado, só de hosts dessa lista (FR-017, M8).
+     */
+    protected _assertGrafanaUrlAllowed(url: string, allowedHosts: string[] = []): void {
+        let parsed: URL;
+        try {
+            parsed = new URL(url);
+        } catch {
+            throw new Error(`Endereço do dashboard inválido: ${url}`);
+        }
+        if (parsed.protocol !== 'https:') {
+            throw new Error(`O dashboard precisa ser servido por HTTPS: ${parsed.origin}`);
+        }
+        if (allowedHosts.length) {
+            const host = parsed.host.toLowerCase();
+            const hostname = parsed.hostname.toLowerCase();
+            const allowed = allowedHosts.map((h) => h.trim().toLowerCase()).filter(Boolean);
+            if (!allowed.includes(host) && !allowed.includes(hostname)) {
+                throw new Error(`Endereço do dashboard não permitido: ${parsed.host}. Hosts permitidos: ${allowed.join(', ')}`);
+            }
         }
     }
 
