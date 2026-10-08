@@ -95,6 +95,16 @@ describe('GrafanaView', () => {
             expect(onBack).toHaveBeenCalledTimes(1);
         });
 
+        it('iframe é isolado com sandbox e sem referrer (US4)', () => {
+            render(<GrafanaView {...withFrame} />);
+            const frame = document.querySelector('iframe.grafana-iframe') as HTMLIFrameElement;
+            const sandbox = frame.getAttribute('sandbox') ?? '';
+            expect(sandbox).toContain('allow-scripts');
+            expect(sandbox).toContain('allow-same-origin');
+            expect(sandbox).not.toContain('allow-top-navigation');
+            expect(frame.getAttribute('referrerpolicy')).toBe('no-referrer');
+        });
+
         it('não renderiza iframe quando não há url', () => {
             render(<GrafanaView {...base} />);
             expect(document.querySelector('iframe')).not.toBeInTheDocument();

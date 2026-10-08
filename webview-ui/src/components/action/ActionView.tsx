@@ -29,9 +29,8 @@ export const ActionView: React.FC<ActionViewProps> = ({
     <div className="vw" id="view-action">
         <div className="sf">
             {alert && (
-                <div className="notif warn-n"
-                     style={{marginBottom: 12, borderLeftColor: '#D13310', background: '#FEF0F0'}}>
-                    <i className="ti ti-alert-triangle" style={{color: '#D13310'}}/>
+                <div className="notif err-n" style={{marginBottom: 12}}>
+                    <i className="ti ti-alert-triangle" aria-hidden="true"/>
                     <span>{alert}</span>
                 </div>
             )}
