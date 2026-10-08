@@ -40,6 +40,7 @@ function makeExtensionContext() {
         secrets: {
             get(key: string) { return Promise.resolve(sec[key] ?? ''); },
             store(key: string, v: string) { sec[key] = v; return Promise.resolve(); },
+            delete(key: string) { delete sec[key]; return Promise.resolve(); },
         },
         extensionUri: { fsPath: '/fake/ext', toString: () => 'file:///fake/ext' },
     };
@@ -111,7 +112,7 @@ function createPanel(webview = makeWebview()) {
     const ctx = makeExtensionContext();
     const vsWindow = makeVsWindow(webview);
     MeasureSoftGramPanel.currentPanel = undefined;
-    MeasureSoftGramPanel.render(ctx as any, vsWindow as any);
+    MeasureSoftGramPanel.render(ctx as any, undefined, vsWindow as any);
     const panel = MeasureSoftGramPanel.currentPanel!;
     return { panel, webview, ctx };
 }
@@ -131,7 +132,7 @@ suite('MeasureSoftGramPanel — render', () => {
 
         const ctx = makeExtensionContext();
         const vsWindow = makeVsWindow(webview);
-        MeasureSoftGramPanel.render(ctx as any, vsWindow as any);
+        MeasureSoftGramPanel.render(ctx as any, undefined, vsWindow as any);
 
         assert.strictEqual(MeasureSoftGramPanel.currentPanel, first);
     });

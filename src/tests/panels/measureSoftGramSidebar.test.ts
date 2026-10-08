@@ -1,5 +1,6 @@
 import * as assert from 'assert';
 import { MeasureSoftGramSidebar } from '../../panels/measureSoftGramSidebar';
+import type { SettingsDeps } from '../../config/settings';
 
 function makeWebview() {
     const posted: any[] = [];
@@ -31,6 +32,7 @@ function makeStatusBar() {
         setError()            { this.errorCalled = true; },
         setNoData()           { this.noDataCalled = true; },
         setScore(s: number)   { this.lastScore = s; },
+        setNotConfigured()    {},
         dispose()             { this.disposeCalled = true; },
     };
 }
@@ -40,6 +42,7 @@ function makeSecrets(token = '') {
     return {
         get: async (k: string) => store[k],
         store: async (k: string, v: string) => { store[k] = v; },
+        delete: async (k: string) => { delete store[k]; },
         onDidChange: () => ({ dispose: () => {} }),
     };
 }
@@ -55,15 +58,34 @@ function makeWorkspaceState(initial: Record<string, string> = {}) {
 }
 
 function makeExtensionContext(overrides: Partial<{ serviceUrl: string; productName: string }> = {}) {
-    return {
-        workspaceState: makeWorkspaceState({
-            'msgram.serviceUrl':  overrides.serviceUrl  ?? 'https://msgram-api.synaptha.com/',
-            'msgram.productName': overrides.productName ?? 'measuresoftgram 2026',
-        }),
+    const ws: Record<string, string> = {};
+    if (overrides.serviceUrl !== undefined) { ws['msgram.serviceUrl'] = overrides.serviceUrl; }
+    if (overrides.productName !== undefined) { ws['msgram.productName'] = overrides.productName; }
+    const ctx = {
+        workspaceState: makeWorkspaceState(ws),
         secrets: makeSecrets(),
         extensionUri: { fsPath: '/ext', with: () => ({}) } as any,
         subscriptions: [],
     } as any;
+    ctx.settingsDeps = makeSettingsDepsFor(ctx);
+    return ctx;
+}
+
+/** Deps de configuração falsas: lê/grava num mapa em memória. */
+function makeSettingsDepsFor(ctx: any): SettingsDeps {
+    const config: Record<string, unknown> = {
+        serviceUrl: ctx.workspaceState.get('msgram.serviceUrl', undefined),
+        productName: ctx.workspaceState.get('msgram.productName', undefined),
+    };
+    return {
+        getConfiguration: () => ({
+            get: <T>(k: string, def?: T) => (config[k] as T) ?? def,
+            update: async (k: string, v: unknown) => { config[k] = v; },
+        }),
+        secrets: ctx.secrets,
+        hasWorkspaceFolder: () => true,
+        ConfigurationTarget: { Global: 1, Workspace: 2 },
+    };
 }
 
 function makeFetchRepositories(repos: any[] = [{ id: 1, name: 'repo-a' }]) {
@@ -86,7 +108,7 @@ suite('MeasureSoftGramSidebar', () => {
     test('resolveWebviewView registra o listener de mensagens', () => {
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         const wv = makeWebview();
         const view = makeWebviewView(wv);
 
@@ -97,7 +119,7 @@ suite('MeasureSoftGramSidebar', () => {
 
     test('request_score envia settings_loaded com a url correta', async () => {
         const ctx = makeExtensionContext({ serviceUrl: 'https://custom.com/' });
-        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
         const wv = makeWebview();
         sidebar.resolveWebviewView(makeWebviewView(wv));
 
@@ -108,13 +130,13 @@ suite('MeasureSoftGramSidebar', () => {
         );
 
         const msg = wv.posted.find((m: any) => m.command === 'settings_loaded');
-        assert.strictEqual(msg?.data.serviceUrl, 'https://custom.com/');
+        assert.strictEqual(msg?.data.serviceUrl, 'https://custom.com');
     });
 
     test('request_score aciona setLoading na status bar', async () => {
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
 
         await sidebar.handleMessage(
@@ -129,7 +151,7 @@ suite('MeasureSoftGramSidebar', () => {
     test('score carregado atualiza status bar com o valor correto', async () => {
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
 
         await sidebar.handleMessage(
@@ -144,7 +166,7 @@ suite('MeasureSoftGramSidebar', () => {
     test('noData=true chama setNoData na status bar', async () => {
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
 
         await sidebar.handleMessage(
@@ -159,7 +181,7 @@ suite('MeasureSoftGramSidebar', () => {
     test('erro no fetch chama setError na status bar', async () => {
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
         const failFetch = async () => { throw new Error('fail'); };
 
@@ -176,7 +198,7 @@ suite('MeasureSoftGramSidebar', () => {
         const repos = [{ id: 1, name: 'repo-a' }, { id: 2, name: 'repo-b' }];
         const ctx = makeExtensionContext();
         const sb = makeStatusBar();
-        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, sb as any, ctx.settingsDeps);
         const wv = makeWebview();
         sidebar.resolveWebviewView(makeWebviewView(wv));
 
@@ -191,7 +213,7 @@ suite('MeasureSoftGramSidebar', () => {
 
     test('save_settings persiste as configurações e envia settings_saved', async () => {
         const ctx = makeExtensionContext();
-        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
         const wv = makeWebview();
         sidebar.resolveWebviewView(makeWebviewView(wv));
 
@@ -207,7 +229,7 @@ suite('MeasureSoftGramSidebar', () => {
 
     test('save_action salva o arquivo yaml e envia action_saved', async () => {
         const ctx = makeExtensionContext();
-        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
         const wv = makeWebview();
         sidebar.resolveWebviewView(makeWebviewView(wv));
         const { workspace, fs } = makeWorkspaceFakes();
@@ -226,7 +248,7 @@ suite('MeasureSoftGramSidebar', () => {
 
     test('run_action abre terminal com comando docker', async () => {
         const ctx = makeExtensionContext();
-        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
         const { workspace, fs } = makeWorkspaceFakes();
         const terminals: any[] = [];
@@ -255,7 +277,7 @@ suite('MeasureSoftGramSidebar', () => {
 
     test('run_action sem workspace mostra mensagem de erro', async () => {
         const ctx = makeExtensionContext();
-        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any);
+        const sidebar = new MeasureSoftGramSidebar(ctx, makeStatusBar() as any, ctx.settingsDeps);
         sidebar.resolveWebviewView(makeWebviewView(makeWebview()));
         let errorShown = '';
         const fakeWindow = {
