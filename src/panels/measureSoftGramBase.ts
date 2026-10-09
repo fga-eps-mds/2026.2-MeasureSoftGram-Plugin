@@ -75,8 +75,8 @@ export abstract class MeasureSoftGramBase {
     protected _selectedRepo: RepoItem | null = null;
     protected _loadState: LoadState = 'not_configured';
     protected _actionState: ActionRunState = 'idle';
-    /** Organização escolhida pela pessoa nesta sessão (sobrepõe msgram.organizationName). */
-    protected _orgNameOverride: string | null = null;
+    /** Organização escolhida pela pessoa nesta sessão, por id (sobrepõe msgram.organizationName). */
+    protected _orgPkOverride: number | null = null;
     protected readonly _settingsDeps: SettingsDeps;
     protected readonly _disposables: Disposable[] = [];
     private readonly _onDidPost = new EventEmitter<ExtensionMessage>();
@@ -182,7 +182,7 @@ export abstract class MeasureSoftGramBase {
 
     protected async _requireSettings(): Promise<FullSettings> {
         const settings = this._settings ?? (await this._loadPersistedSettings());
-        return this._orgNameOverride ? {...settings, organizationName: this._orgNameOverride} : settings;
+        return this._orgPkOverride !== null ? {...settings, organizationPk: this._orgPkOverride} : settings;
     }
 
     /**
@@ -414,7 +414,8 @@ export abstract class MeasureSoftGramBase {
                 if (!org) {
                     return true;
                 }
-                this._orgNameOverride = org.name;
+                this._orgPkOverride = org.id;
+                this._selectedRepo = null;
                 await this._loadReposAndScore(fetchRepos, fetchScore);
                 return true;
             }
@@ -449,7 +450,7 @@ export abstract class MeasureSoftGramBase {
                 await this._persistSettings(message.data as SettingsPayload);
                 this._context = null;
                 this._selectedRepo = null;
-                this._orgNameOverride = null;
+                this._orgPkOverride = null;
                 this.post({command: 'settings_saved'});
                 if (await this._refreshSettingsAndGate()) {
                     await this._loadReposAndScore(fetchRepos, fetchScore);

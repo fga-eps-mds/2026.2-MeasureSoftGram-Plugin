@@ -20,6 +20,8 @@ export interface MsgramSettings {
   productName: string;
   /** vazio = primeira organização */
   organizationName?: string;
+  /** escolhida no seletor da interface; tem prioridade sobre o nome */
+  organizationPk?: number;
   requestTimeoutMs?: number;
 }
 
@@ -100,7 +102,10 @@ export async function fetchRepositories(settings: MsgramSettings, log: Logger = 
 
   let org = organizations[0];
   const wanted = norm(settings.organizationName ?? '');
-  if (wanted) {
+  const byPk = settings.organizationPk !== undefined ? organizations.find((x) => x.id === settings.organizationPk) : undefined;
+  if (byPk) {
+    org = byPk;
+  } else if (wanted) {
     const found = organizations.find((x) => norm(x.name) === wanted);
     if (!found) {
       throw new HttpError(
