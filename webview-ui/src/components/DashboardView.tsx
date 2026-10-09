@@ -6,6 +6,7 @@ interface DashboardViewProps {
     scoreData: ScoreData | null;
     scoreLoading: boolean;
     productName: string;
+    repoName?: string;
     notifText: string;
     notifType: 'ok' | 'error';
     onRetry?: () => void;
@@ -13,17 +14,41 @@ interface DashboardViewProps {
     now?: Date;
 }
 
+/** Medidor circular do TSQMI. */
+const Gauge: React.FC<{ value: number | null; status: 'ok' | 'warn' | 'fail' | 'none' }> = ({value, status}) => {
+    const r = 44;
+    const c = 2 * Math.PI * r;
+    const pct = value === null ? 0 : Math.max(0, Math.min(1, value));
+    return (
+        <div className={`gauge ${status}`} role="img" aria-label={value === null ? 'sem score' : `TSQMI ${value.toFixed(2)}`}>
+            <svg viewBox="0 0 110 110" width="110" height="110">
+                <circle className="gauge-track" cx="55" cy="55" r={r} fill="none" strokeWidth="9"/>
+                <circle
+                    className="gauge-fill"
+                    cx="55" cy="55" r={r} fill="none" strokeWidth="9" strokeLinecap="round"
+                    strokeDasharray={`${c * pct} ${c}`}
+                    transform="rotate(-90 55 55)"
+                />
+            </svg>
+            <div className="gauge-center">
+                <div className="hero-num" id="hero-score">{value === null ? '—' : value.toFixed(2)}</div>
+                <div className="gauge-lbl">TSQMI</div>
+            </div>
+        </div>
+    );
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
                                                                 scoreData,
                                                                 scoreLoading,
                                                                 productName,
+                                                                repoName,
                                                                 notifText,
                                                                 notifType,
                                                                 onRetry,
                                                                 now,
                                                             }) => {
     const score = scoreData?.score ?? 0;
-    const scorePct = (score * 100).toFixed(0);
     const hasGoal = !!scoreData?.hasGoal;
 
     const withGoal = (scoreData?.characteristics ?? []).filter(
@@ -33,7 +58,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         ? withGoal.reduce((s, c) => s + c.goal, 0) / withGoal.length
         : null;
 
-    // Característica mais distante da meta (só conta quem tem meta e está abaixo dela)
     const belowGoal = withGoal.filter((c) => c.value < c.goal);
     const worstChar = belowGoal.length
         ? belowGoal.reduce((worst, c) => (c.value - c.goal < worst.value - worst.goal ? c : worst), belowGoal[0])
@@ -41,11 +65,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const productLabel = productName || 'sem produto configurado';
 
+    const scoreStatus: 'ok' | 'warn' | 'fail' | 'none' =
+        !scoreData || scoreData.noData ? 'none'
+            : avgGoal === null ? 'warn'
+                : score >= avgGoal ? 'ok'
+                    : score >= avgGoal * 0.9 ? 'warn' : 'fail';
+
     let metaStatus: React.ReactNode = '—';
     if (scoreData && avgGoal !== null) {
         metaStatus = score >= avgGoal
-            ? <span className="ok">acima ✓</span>
-            : <span className="fail">abaixo ✗</span>;
+            ? <span className="chip ok">acima ✓</span>
+            : <span className="chip fail">abaixo ✗</span>;
     }
 
     const lastAnalysis = scoreData?.lastAnalysisAt
@@ -53,6 +83,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         : <span>nunca analisado</span>;
 
     const showRetry = notifType === 'error' && !!notifText && !!onRetry;
+    const showHero = !scoreLoading;
 
     return (
         <div className="vw on" id="view-dashboard">
@@ -63,8 +94,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <i className="codicon codicon-dashboard" aria-hidden="true"/>
                         <span>MeasureSoftGram</span>
                     </div>
-                    <div className="view-sub">
-                        {productLabel} · {lastAnalysis}
+                    <div className="view-sub meta-row">
+                        <span className="meta-item"><i className="codicon codicon-package" aria-hidden="true"/> {productLabel}</span>
+                        {repoName && <span className="meta-item"><i className="codicon codicon-repo" aria-hidden="true"/> {repoName}</span>}
+                        <span className="meta-item"><i className="codicon codicon-history" aria-hidden="true"/> {lastAnalysis}</span>
                     </div>
                 </div>
             </div>
@@ -72,7 +105,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Loading state */}
             {scoreLoading && (
                 <div className="notif" style={{marginBottom: 14}}>
-                    <i className="codicon codicon-loading codicon-modifier-spin run-anim" aria-hidden="true"/>
+                    <i className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"/>
                     <span>Carregando dados do produto...</span>
                 </div>
             )}
@@ -118,37 +151,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
 
             {/* Score hero */}
-            {!scoreLoading && (
+            {showHero && (
                 <div className="score-hero">
-                    <div className="hero-num" id="hero-score">
-                        {scoreData ? score.toFixed(2) : '—'}
-                    </div>
+                    <Gauge value={scoreData && !scoreData.noData ? score : null} status={scoreStatus}/>
                     <div className="hero-right">
                         <div className="hero-lbl">TSQMI do produto</div>
-                        <div className="hero-bar">
-                            <div className="hero-fill" id="hero-fill" style={{width: `${scorePct}%`}}/>
+                        <div className="hero-desc">
+                            Indicador multidimensional da qualidade, de 0 a 1, calculado a partir das características abaixo.
                         </div>
                         <div className="hero-meta">
                             {scoreData && !hasGoal
-                                ? <span>sem meta definida para este produto</span>
-                                : <>meta da release: {avgGoal !== null ? avgGoal.toFixed(2) : '—'} · {metaStatus}</>}
+                                ? <span className="chip muted">sem meta definida para este produto</span>
+                                : <>meta da release: <strong>{avgGoal !== null ? avgGoal.toFixed(2) : '—'}</strong> · {metaStatus}</>}
                         </div>
                     </div>
                 </div>
             )}
 
+            {/* Características */}
+            {showHero && scoreData && scoreData.characteristics.length > 0 && (
+                <div className="sec-title" style={{marginTop: 4}}>
+                    <i className="codicon codicon-list-tree" aria-hidden="true"/> Características
+                </div>
+            )}
             <div id="chars-dashboard">
                 {scoreData?.characteristics.map((c) => {
                     const status = getCharStatus(c.value, c.goal);
                     const mark = c.goal === null || c.value >= c.goal ? '✓' : '~';
+                    const pct = Math.round(Math.max(0, Math.min(1, c.value)) * 100);
                     return (
                         <div key={c.key} className={`char-row ${status}`}>
-                            <i className={`codicon codicon-circle-filled char-icon ${status}`} aria-hidden="true"/>
-                            <span className="char-name">{c.name}</span>
-                            <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
-                            <span className="char-goal">
-                                meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
-                            </span>
+                            <div className="char-head">
+                                <i className={`codicon ${status === 'ok' ? 'codicon-pass' : 'codicon-warning'} char-icon ${status}`} aria-hidden="true"/>
+                                <span className="char-name">{c.name}</span>
+                                <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
+                                <span className="char-goal">
+                                    meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
+                                </span>
+                            </div>
+                            <div className="char-bar">
+                                <div className={`char-fill ${status}`} style={{width: `${pct}%`}}/>
+                                {c.goal !== null && (
+                                    <div className="char-goal-mark" style={{left: `${Math.round(c.goal * 100)}%`}} title={`meta ${c.goal.toFixed(2)}`}/>
+                                )}
+                            </div>
                         </div>
                     );
                 })}
