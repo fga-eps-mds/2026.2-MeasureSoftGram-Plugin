@@ -29,7 +29,7 @@ Correção de todos os itens do diagnóstico de 07/10/2026 (`diagnostico-2026-2.
 
 ### Interface
 - Barra lateral nativa ("Qualidade"): árvore do VS Code com ícones do editor, produto/organização, repositório (troca por Quick Pick), TSQMI e meta, última análise, características, dashboards do Grafana e ações; tela de boas-vindas nativa quando falta configuração; botões no título da view. O painel React vira a view "Painel" e o detalhe aberto pela árvore.
-- Seleção automática do repositório da pasta aberta (remote origin ou nome da pasta) e organização escolhida por id.
+- Ao abrir a extensão em qualquer repositório cadastrado, ela entra nele sozinha: procura o repositório da pasta aberta (remote origin ou nome da pasta) no produto configurado e, se não estiver lá, em todas as organizações e produtos da conta, trocando e persistindo produto/organização. Organização escolhida por id.
 - Painel principal redesenhado: medidor circular do TSQMI colorido pelo status, etiquetas de produto/repositório/última análise, características com barra de progresso e marcador da meta.
 - Painel com visual nativo: ícones do próprio VS Code (codicons, empacotados, sem CDN), tipografia do editor, abas no estilo do painel, botões e inputs com as cores nativas, cartões planos.
 - Política de segurança da webview restrita: `default-src 'none'`, fontes e estilos do pacote, scripts por nonce, frames só por HTTPS.
