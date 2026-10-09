@@ -46,6 +46,7 @@ Correção de todos os itens do diagnóstico de 07/10/2026 (`diagnostico-2026-2.
 - `vscode:prepublish` gera a interface; `.vscodeignore` exclui `coverage/` de qualquer pasta; `npm run package` gera o `.vsix`.
 - Workflow `msg` usa `GITHUB_TOKEN`, fixa a Action em 2.1.5 e só roda após testes verdes. Workflow `package.yml` retomado: confere versão = tag, valida o pacote, anexa à release e publica no Marketplace com `VSCE_PAT`.
 - `docs/SECRETS.md` lista os secrets que o CI precisa e quem os cria.
+- Workflow "Export de métricas" não faz mais push no repositório DOC (passo que falhava desde 14/09 por token inválido): os JSON do SonarCloud ficam como artefato do workflow em todo push e como asset da release nas tags. Os secrets `METRICAS_PLUGIN`, `USER_EMAIL` e `USER_NAME` deixam de ser necessários.
 - `parser.py` com timeout, `raise_for_status` e validação da resposta.
 - Lógica da aba Action centralizada na classe base; listeners registrados em `subscriptions`; `login()` e dependências sem uso removidos.
 
