@@ -13,6 +13,7 @@ import {
 } from '../services/msgramApi';
 import {HttpError} from '../services/httpClient';
 import {ActRunner, sharedActRunner} from '../services/actRunner';
+import {detectWorkspaceHints, pickMatchingRepo, WorkspaceHints} from '../utilities/workspaceRepo';
 import {
     clearSecret,
     FullSettings,
@@ -86,6 +87,11 @@ export abstract class MeasureSoftGramBase {
     protected _fetchGrafanaDashboard = defaultFetchGrafanaDashboard;
     /** Compartilhado entre painel e barra lateral: uma execução por janela. */
     protected _actRunner: ActRunner = sharedActRunner();
+    /** Injetável nos testes: pistas da pasta aberta (remote origin / nome). */
+    protected _detectWorkspaceHints: () => Promise<WorkspaceHints> = async () => {
+        const folder = workspace.workspaceFolders?.[0];
+        return folder ? detectWorkspaceHints(folder.uri.fsPath) : {};
+    };
 
     protected constructor(
         protected readonly _extensionContext: ExtensionContext,
@@ -228,15 +234,28 @@ export abstract class MeasureSoftGramBase {
                 organizations: this._context.organizations ?? [],
                 selectedOrgPk: this._context.orgPk,
             });
-            this.post({command: 'repos_loaded', repos});
-
             if (!repos.length) {
+                this.post({command: 'repos_loaded', repos});
                 this.onReposEmpty();
                 this.post({command: 'score_error', message: 'Nenhum repositório encontrado.', kind: 'not_found'});
                 return;
             }
 
-            this._selectedRepo = repos[0];
+            // Mantém a escolha da pessoa ao recarregar; senão tenta a pasta aberta; senão o primeiro.
+            const keep = this._selectedRepo && repos.find((r) => r.id === this._selectedRepo!.id);
+            let detected = false;
+            let chosen = keep ?? repos[0];
+            if (!keep) {
+                const hints = await this._detectWorkspaceHints();
+                const match = pickMatchingRepo(repos, hints);
+                if (match) {
+                    chosen = match;
+                    detected = true;
+                    this.logger()(`[${new Date().toLocaleTimeString('pt-BR')}] → Repositório da pasta aberta: "${match.name}" (${hints.remoteName ?? hints.folderName})`);
+                }
+            }
+            this._selectedRepo = chosen;
+            this.post({command: 'repos_loaded', repos, selectedRepoPk: chosen.id, detected});
             await this._loadScoreForSelected(fetchScore);
         } catch (err) {
             const message = this._errorMessage(err, 'Erro ao buscar repositórios.');

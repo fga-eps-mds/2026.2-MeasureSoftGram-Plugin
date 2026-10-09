@@ -23,6 +23,7 @@ vi.mock('../components/Sidebar', () => ({
             data-tab={props.activeTab as string}
             data-orgs={(props.organizations as unknown[] | undefined)?.length ?? 0}
             data-selected-org={String(props.selectedOrgPk ?? '')}
+            data-selected-repo={String(props.selectedRepoPk ?? '')}
         >
             <button data-testid="select-org" onClick={() => (props.onSelectOrg as (pk: number) => void)?.(11)}>org</button>
         </div>
@@ -198,6 +199,14 @@ describe('App', () => {
                 sendMessage({command: 'repos_loaded', repos: [{id: 1, name: 'repo-1'}, {id: 2, name: 'repo-2'}]});
             });
             expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
+        });
+
+        it('repos_loaded com selectedRepoPk seleciona o repositório detectado', () => {
+            render(<App/>);
+            act(() => {
+                sendMessage({command: 'repos_loaded', repos: [{id: 1, name: 'a'}, {id: 2, name: 'b'}], selectedRepoPk: 2, detected: true});
+            });
+            expect(screen.getByTestId('sidebar').getAttribute('data-selected-repo')).toBe('2');
         });
 
         it('deve ativar scoreLoading ao receber score_loading', () => {

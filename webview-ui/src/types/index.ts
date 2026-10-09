@@ -133,7 +133,7 @@ export type ExtensionMessage =
     | { command: 'settings_loaded'; data: SettingsForUi }
     | { command: 'settings_saved' }
     | { command: 'orgs_loaded'; organizations: OrgItem[]; selectedOrgPk: number }
-    | { command: 'repos_loaded'; repos: RepoItem[] }
+    | { command: 'repos_loaded'; repos: RepoItem[]; selectedRepoPk?: number; detected?: boolean }
     | { command: 'score_loading' }
     | { command: 'score_loaded'; data: ScoreData }
     | { command: 'score_error'; message: string; kind: ScoreErrorKind }

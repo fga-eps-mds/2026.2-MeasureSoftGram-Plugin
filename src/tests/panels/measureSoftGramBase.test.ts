@@ -712,4 +712,42 @@ suite('MeasureSoftGramBase', () => {
 
         assert.strictEqual(runner.stopCalls, 0);
     });
+
+    // ── Detecção do repositório da pasta aberta ───────────────────────────
+
+    const threeRepos = [{ id: 1, name: 'Service' }, { id: 2, name: 'MeasureSoftGram-Plugin' }, { id: 3, name: 'Front' }];
+
+    test('seleciona o repositório que casa com o remote origin da pasta aberta', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), makeFetchRepositories(threeRepos));
+        (base as any)._detectWorkspaceHints = async () => ({ remoteName: '2026.1-MeasureSoftGram-Plugin', folderName: 'x' });
+
+        await base.handleMessage({ command: 'request_score' });
+
+        assert.strictEqual(base.getSelectedRepo()?.id, 2);
+        const msg = base.webviewInstance.posted.find((m: any) => m.command === 'repos_loaded');
+        assert.strictEqual(msg?.selectedRepoPk, 2);
+        assert.strictEqual(msg?.detected, true);
+    });
+
+    test('sem casamento usa o primeiro e marca detected=false', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), makeFetchRepositories(threeRepos));
+        (base as any)._detectWorkspaceHints = async () => ({ folderName: 'outra-coisa' });
+
+        await base.handleMessage({ command: 'request_score' });
+
+        assert.strictEqual(base.getSelectedRepo()?.id, 1);
+        const msg = base.webviewInstance.posted.find((m: any) => m.command === 'repos_loaded');
+        assert.strictEqual(msg?.detected, false);
+    });
+
+    test('retry mantém o repositório que a pessoa escolheu', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), makeFetchRepositories(threeRepos));
+        (base as any)._detectWorkspaceHints = async () => ({ remoteName: 'MeasureSoftGram-Plugin' });
+        await base.handleMessage({ command: 'request_score' });
+        await base.handleMessage({ command: 'select_repo', repoPk: 3 });
+
+        await base.handleMessage({ command: 'retry' });
+
+        assert.strictEqual(base.getSelectedRepo()?.id, 3);
+    });
 });

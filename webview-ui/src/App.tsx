@@ -104,7 +104,7 @@ const App: React.FC = () => {
                 case 'repos_loaded':
                     setRepos(msg.repos);
                     if (msg.repos.length) {
-                        setSelectedRepoPk(msg.repos[0].id);
+                        setSelectedRepoPk(msg.selectedRepoPk ?? msg.repos[0].id);
                     }
                     break;
 
