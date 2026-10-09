@@ -255,7 +255,11 @@ export abstract class MeasureSoftGramBase {
                 this._context = null;
                 this._selectedRepo = null;
                 this.onNotConfigured();
-                this.post({command: 'not_configured', missing: ['productName']});
+                const unregisteredRepo = hints.remoteName ?? hints.folderName;
+                if (unregisteredRepo) {
+                    this.logger()(`[${new Date().toLocaleTimeString('pt-BR')}] → "${unregisteredRepo}" não está cadastrado em nenhum produto desta conta.`);
+                }
+                this.post({command: 'not_configured', missing: ['productName'], unregisteredRepo});
                 return;
             }
             this._context = result.context;

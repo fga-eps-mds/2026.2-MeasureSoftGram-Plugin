@@ -61,7 +61,7 @@ export interface QualityTreeDeps {
     setContext?: (key: string, value: unknown) => Thenable<unknown>;
 }
 
-type State = 'not_configured' | 'loading' | 'ready' | 'error';
+type State = 'not_configured' | 'unregistered' | 'loading' | 'ready' | 'error';
 
 export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     private readonly _onDidChangeTreeData = new EventEmitter<QualityNode | undefined>();
@@ -76,6 +76,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     private _error: { message: string; kind: string } | null = null;
     private _orgPkOverride: number | null = null;
     private _loading: Promise<void> | null = null;
+    private _unregisteredRepo: string | null = null;
 
     private readonly _fetchRepositories: typeof defaultFetchRepositories;
     private readonly _fetchScoreForRepo: typeof defaultFetchScoreForRepo;
@@ -166,11 +167,19 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             });
 
             if (result.kind === 'missingProduct') {
-                await this._setContext('msgram.configured', false);
-                this._state = 'not_configured';
                 this._context = null;
                 this._selectedRepo = null;
                 this._score = null;
+                this._unregisteredRepo = hints.remoteName ?? hints.folderName ?? null;
+                if (this._unregisteredRepo) {
+                    // Há token e pasta aberta, mas o repositório não está em nenhum produto: mostra na árvore.
+                    await this._setContext('msgram.configured', true);
+                    this._state = 'unregistered';
+                    this.log(`"${this._unregisteredRepo}" não está cadastrado em nenhum produto desta conta`);
+                } else {
+                    await this._setContext('msgram.configured', false);
+                    this._state = 'not_configured';
+                }
                 this._deps.statusBar?.setNotConfigured();
                 this.fire();
                 return;
@@ -320,6 +329,20 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
         if (this._state === 'not_configured') {
             // viewsWelcome cuida da mensagem; a árvore fica vazia.
             return [];
+        }
+        if (this._state === 'unregistered') {
+            return [
+                {
+                    kind: 'error',
+                    label: `"${this._unregisteredRepo}" não está cadastrado`,
+                    description: 'em nenhum produto desta conta',
+                    tooltip: 'Cadastre o repositório em um produto no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez. Ou informe o produto em Configurar.',
+                    icon: new ThemeIcon('repo', new ThemeColor('charts.yellow')),
+                },
+                {kind: 'action', label: 'Cadastrar no MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
+                {kind: 'action', label: 'Informar o produto manualmente', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
+                {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
+            ];
         }
         if (this._state === 'loading' && !this._score) {
             return [{kind: 'loading', label: 'Carregando…', icon: new ThemeIcon('loading~spin')}];

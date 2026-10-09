@@ -200,8 +200,19 @@ suite('QualityTreeProvider — seleção', () => {
         assert.strictEqual(contextKeys['msgram.configured'], true);
     });
 
-    test('sem produto e pasta desconhecida: not_configured', async () => {
+    test('sem produto e pasta aberta não cadastrada: estado "unregistered" com ações na árvore', async () => {
         const {tree, contextKeys} = makeTree({token: 'tok', hints: async () => ({folderName: 'x'})});
+        await tree.refresh();
+        assert.strictEqual(tree.state, 'unregistered');
+        assert.strictEqual(contextKeys['msgram.configured'], true, 'a árvore mostra o aviso, não a tela de boas-vindas');
+        const root = await tree.getChildren();
+        assert.ok(root[0].label.includes('"x"') && root[0].label.includes('não está cadastrado'));
+        assert.ok(root.some((n) => n.command?.command === 'msgram.openSite'));
+        assert.ok(root.some((n) => n.command?.command === 'msgram.openSettings'));
+    });
+
+    test('sem produto e sem pasta aberta: not_configured (tela de boas-vindas)', async () => {
+        const {tree, contextKeys} = makeTree({token: 'tok', hints: async () => ({})});
         await tree.refresh();
         assert.strictEqual(tree.state, 'not_configured');
         assert.strictEqual(contextKeys['msgram.configured'], false);

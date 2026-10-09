@@ -69,6 +69,14 @@ export function activate<S, P = any>(
 
 
     context.subscriptions.push(
+        vscode.commands.registerCommand('msgram.openSite', async () => {
+            const real = require('vscode');
+            const url = real.workspace.getConfiguration('msgram').get('serviceUrl') || 'https://msgram.lappis.rocks';
+            await real.env.openExternal(real.Uri.parse(String(url)));
+        }),
+    );
+
+    context.subscriptions.push(
         vscode.commands.registerCommand('msgram.openSettings', async () => {
             // Abre o painel na aba Config.
             const panel: any = Panel.render(context, statusBar);

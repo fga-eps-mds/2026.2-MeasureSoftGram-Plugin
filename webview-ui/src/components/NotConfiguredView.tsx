@@ -3,6 +3,8 @@ import type {MissingSetting} from '../types';
 
 interface NotConfiguredViewProps {
     missing: MissingSetting[];
+    /** repositório da pasta aberta que não está em nenhum produto da conta */
+    unregisteredRepo?: string;
     onOpenSettings: () => void;
     onOpenVscodeSettings: () => void;
 }
@@ -17,7 +19,7 @@ const LABELS: Record<MissingSetting, string> = {
  * Tela exibida no lugar do painel quando falta configuração.
  * Nunca mostra score, repositórios ou avisos: não há dado real para mostrar.
  */
-export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, onOpenSettings, onOpenVscodeSettings}) => (
+export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, unregisteredRepo, onOpenSettings, onOpenVscodeSettings}) => (
     <div className="vw on" id="view-not-configured">
         <div className="view-header">
             <div>
@@ -30,6 +32,17 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, on
                 </div>
             </div>
         </div>
+
+        {unregisteredRepo && (
+            <div className="notif warn-n" style={{marginBottom: 14}} data-testid="unregistered-repo">
+                <i className="codicon codicon-repo" aria-hidden="true"/>
+                <span>
+                    O repositório <strong>{unregisteredRepo}</strong> não está cadastrado em nenhum produto desta conta.
+                    Cadastre-o no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez,
+                    ou informe abaixo o produto onde ele está.
+                </span>
+            </div>
+        )}
 
         <div className="notif" style={{marginBottom: 14}}>
             <i className="codicon codicon-info" aria-hidden="true"/>
