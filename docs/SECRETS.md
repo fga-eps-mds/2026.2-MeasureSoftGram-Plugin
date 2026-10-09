@@ -9,13 +9,11 @@ Os workflows em `.github/workflows/` dependem dos secrets abaixo. Eles ficam em
 | `GITHUB_TOKEN` | `msgram.yml`, `metrics.yml`, `package.yml` | token automático do próprio workflow | ninguém (o GitHub fornece) | nada a fazer |
 | `SONAR_TOKEN` | `test.yml` | enviar análise ao SonarCloud (`fga-eps-mds-1`) | admin do SonarCloud | o passo "Scanner do SonarCloud" termina verde |
 | `MSGRAMPLUGINTOKEN` | `msgram.yml` | token de API do MeasureSoftGram para publicar métricas deste repo | quem tem conta no produto "Measure" em `msgram.lappis.rocks` | o job `msg` termina verde e o produto recebe uma coleta nova |
-| `METRICAS_PLUGIN` | `metrics.yml` | token com **permissão de escrita** no repositório `fga-eps-mds/2026.2-MeasureSoftGram-DOC` | admin da org; token clássico com escopo `repo` ou fine-grained com *Contents: write* no repo DOC | o passo "Envia métricas para repo de Doc" faz `git push` sem `Invalid username or token` |
-| `USER_EMAIL`, `USER_NAME` | `metrics.yml` | autor dos commits no repo DOC | admin da org | o commit no repo DOC aparece com esse autor |
 | `VSCE_PAT` | `package.yml` | publicar o `.vsix` no VS Code Marketplace como `MeasureSoftGram` | quem administra o publisher no [Marketplace](https://marketplace.visualstudio.com/manage) (Azure DevOps PAT com escopo *Marketplace: Manage*) | `workflow_dispatch` com `dry_run=false` em uma tag `vX.Y.Z` publica a versão |
 
 ## Estado em 07/10/2026 (diagnóstico)
 
-- `METRICAS_PLUGIN`: **inválido ou expirado**. O workflow "Export de métricas" falha em todo push desde 14/09 com `remote: Invalid username or token`. Precisa ser recriado.
+- `METRICAS_PLUGIN`, `USER_EMAIL`, `USER_NAME`: **não são mais usados**. O workflow "Export de métricas" falhava em todo push desde 14/09 com `remote: Invalid username or token` ao tentar dar push no repositório DOC. Esse passo foi removido: os JSON do SonarCloud ficam como artefato do workflow (90 dias) em todo push e como asset da release quando há tag. Os três secrets podem ser apagados.
 - `GITHUBTOKEN` (sem underscore): **não existia**. O workflow `msg` passou a usar `GITHUB_TOKEN`, então esse secret não é mais necessário.
 - `VSCE_PAT`: **não existe**. Sem ele o `package.yml` gera e anexa o `.vsix` à release, mas pula a publicação com um aviso.
 
