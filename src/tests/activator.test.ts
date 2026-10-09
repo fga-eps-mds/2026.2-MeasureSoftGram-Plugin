@@ -82,8 +82,8 @@ suite('activator — activate()', () => {
         assert.ok('msgram.clearTokens' in registeredCommands);
     });
 
-    test('adiciona 5 itens às subscriptions (status bar, sidebar e 3 comandos)', () => {
-        assert.strictEqual(subscriptions.length, 5);
+    test('adiciona 6 itens às subscriptions (status bar, sidebar e 4 comandos)', () => {
+        assert.strictEqual(subscriptions.length, 6);
     });
 
     test('passa a StatusBar para Panel.render', () => {

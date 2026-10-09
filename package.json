@@ -116,6 +116,12 @@
         "title": "Executar Action localmente",
         "icon": "$(play)",
         "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.openSite",
+        "title": "Abrir site do MeasureSoftGram",
+        "icon": "$(link-external)",
+        "category": "MeasureSoftGram"
       }
     ],
     "menus": {
@@ -144,6 +150,9 @@
         {
           "command": "msgram.openDashboard",
           "when": "false"
+        },
+        {
+          "command": "msgram.openSite"
         }
       ],
       "view/title": [

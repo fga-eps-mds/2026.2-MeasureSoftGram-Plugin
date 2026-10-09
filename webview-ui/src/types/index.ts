@@ -129,7 +129,7 @@ export type PanelMessage =
 // ── Extensão → Interface ───────────────────────────────────────────────────
 
 export type ExtensionMessage =
-    | { command: 'not_configured'; missing: MissingSetting[] }
+    | { command: 'not_configured'; missing: MissingSetting[]; unregisteredRepo?: string }
     | { command: 'settings_loaded'; data: SettingsForUi }
     | { command: 'settings_saved' }
     | { command: 'orgs_loaded'; organizations: OrgItem[]; selectedOrgPk: number }

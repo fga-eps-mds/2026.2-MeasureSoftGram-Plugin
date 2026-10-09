@@ -170,9 +170,21 @@ export async function discoverRepository(
   const exactNames = [hints.remoteName, hints.folderName].filter((h): h is string => !!h).map((h) => norm(h));
 
   for (const org of organizations) {
-    const products = await getAll<ProductItem>(`${base}/organizations/${org.id}/products/`, o);
+    let products: ProductItem[];
+    try {
+      products = await getAll<ProductItem>(`${base}/organizations/${org.id}/products/`, o);
+    } catch (err) {
+      log(`[${ts()}] → "${org.name}": não foi possível listar produtos (${(err as Error).message}); pulando.`);
+      continue;
+    }
     for (const product of products) {
-      const repos = await getAll<RepoItem>(`${base}/organizations/${org.id}/products/${product.id}/repositories/`, o);
+      let repos: RepoItem[];
+      try {
+        repos = await getAll<RepoItem>(`${base}/organizations/${org.id}/products/${product.id}/repositories/`, o);
+      } catch (err) {
+        log(`[${ts()}] → "${org.name}" / "${product.name.trim()}": sem acesso aos repositórios (${(err as Error).message}); pulando.`);
+        continue;
+      }
       const match = pickMatchingRepo(repos, hints);
       if (!match) {
         continue;

@@ -45,6 +45,7 @@ const App: React.FC = () => {
 
     const [loadState, setLoadState] = useState<LoadState>('loading');
     const [missing, setMissing] = useState<MissingSetting[]>([]);
+    const [unregisteredRepo, setUnregisteredRepo] = useState<string | undefined>(undefined);
     const [scoreData, setScoreData] = useState<ScoreData | null>(null);
     const [scoreLoading, setScoreLoading] = useState(true);
     const [organizations, setOrganizations] = useState<OrgItem[]>([]);
@@ -90,6 +91,7 @@ const App: React.FC = () => {
                 case 'not_configured':
                     setLoadState('not_configured');
                     setMissing(msg.missing);
+                    setUnregisteredRepo(msg.unregisteredRepo);
                     setScoreLoading(false);
                     setScoreData(null);
                     setRepos([]);
@@ -309,6 +311,7 @@ const App: React.FC = () => {
                 {activeTab === 'dashboard' && loadState === 'not_configured' && (
                     <NotConfiguredView
                         missing={missing}
+                        unregisteredRepo={unregisteredRepo}
                         onOpenSettings={() => showTab('settings')}
                         onOpenVscodeSettings={handleOpenVscodeSettings}
                     />
