@@ -29,6 +29,7 @@ Correção de todos os itens do diagnóstico de 07/10/2026 (`diagnostico-2026-2.
 
 ### Interface
 - Barra lateral nativa ("Qualidade"): árvore do VS Code com ícones do editor, produto/organização, repositório (troca por Quick Pick), TSQMI e meta, última análise, características, dashboards do Grafana e ações; tela de boas-vindas nativa quando falta configuração; botões no título da view. O painel React vira a view "Painel" e o detalhe aberto pela árvore.
+- Cadastro com um clique: quando a pasta aberta não está em nenhum produto, a árvore e o painel oferecem "Cadastrar automaticamente" (comando `MeasureSoftGram: Cadastrar este repositório`), que escolhe organização e produto (ou cria um novo), cria o repositório pela API e já configura o workspace. A primeira coleta roda no serviço em segundo plano.
 - Ao abrir a extensão em qualquer repositório cadastrado, ela entra nele sozinha: procura o repositório da pasta aberta (remote origin ou nome da pasta) no produto configurado e, se não estiver lá, em todas as organizações e produtos da conta, trocando e persistindo produto/organização. Organização escolhida por id.
 - Painel principal redesenhado: medidor circular do TSQMI colorido pelo status, etiquetas de produto/repositório/última análise, características com barra de progresso e marcador da meta.
 - Painel com visual nativo: ícones do próprio VS Code (codicons, empacotados, sem CDN), tipografia do editor, abas no estilo do painel, botões e inputs com as cores nativas, cartões planos.
