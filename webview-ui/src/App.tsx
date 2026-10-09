@@ -199,12 +199,19 @@ const App: React.FC = () => {
                     setGrafanaLoading(false);
                     setGrafanaError(msg.message);
                     break;
+
+                case 'show_tab':
+                    showTab(msg.tab);
+                    if (msg.tab === 'grafana' && msg.dashboardUid) {
+                        vscode.postMessage({command: 'request_grafana_dashboard', uid: msg.dashboardUid});
+                    }
+                    break;
             }
         };
 
         window.addEventListener('message', handler);
         return () => window.removeEventListener('message', handler);
-    }, [showTab, appendLog]);
+    }, [showTab, appendLog, vscode]);
 
     const handleSelectOrg = (orgPk: number) => {
         setSelectedOrgPk(orgPk);

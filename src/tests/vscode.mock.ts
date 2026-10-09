@@ -21,6 +21,21 @@ const vscode = {
         constructor(public id: string) {}
     },
 
+    ThemeIcon: class ThemeIcon {
+        constructor(public id: string, public color?: any) {}
+    },
+
+    MarkdownString: class MarkdownString {
+        constructor(public value = '') {}
+    },
+
+    TreeItemCollapsibleState: { None: 0, Collapsed: 1, Expanded: 2 },
+
+    TreeItem: class TreeItem {
+        description?: string; tooltip?: any; iconPath?: any; command?: any; contextValue?: string;
+        constructor(public label: string, public collapsibleState = 0) {}
+    },
+
     window: {
         createStatusBarItem: (_alignment: any, _priority: number) => ({
             command: undefined as any,
@@ -46,6 +61,10 @@ const vscode = {
         showErrorMessage: () => Promise.resolve(undefined),
         showInformationMessage: () => Promise.resolve(undefined),
         showWarningMessage: () => Promise.resolve(undefined),
+        /** Os testes trocam por uma função que devolve o item escolhido. */
+        showQuickPick: (items: any[]) => Promise.resolve(items[0]),
+        registerTreeDataProvider: () => ({ dispose() {} }),
+        createTreeView: () => ({ dispose() {}, reveal() {} }),
     },
 
     ConfigurationTarget: { Global: 1, Workspace: 2, WorkspaceFolder: 3 },

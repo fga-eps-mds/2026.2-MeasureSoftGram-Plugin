@@ -147,4 +147,5 @@ export type ExtensionMessage =
     | { command: 'grafana_loading' }
     | { command: 'grafana_dashboards_loaded'; dashboards: GrafanaDashboard[] }
     | { command: 'grafana_dashboard_loaded'; url: string; title: string }
-    | { command: 'grafana_error'; message: string };
+    | { command: 'grafana_error'; message: string }
+    | { command: 'show_tab'; tab: 'dashboard' | 'output' | 'settings' | 'action' | 'grafana'; dashboardUid?: string };

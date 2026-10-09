@@ -117,6 +117,11 @@ export abstract class MeasureSoftGramBase {
         return this._webview !== undefined;
     }
 
+    /** Pede à interface que mostre uma aba (usado pela árvore nativa). */
+    public showTab(tab: 'dashboard' | 'output' | 'settings' | 'action' | 'grafana', dashboardUid?: string): void {
+        this.post({command: 'show_tab', tab, dashboardUid});
+    }
+
     public dispose(): void {
         while (this._disposables.length) {
             this._disposables.pop()?.dispose();

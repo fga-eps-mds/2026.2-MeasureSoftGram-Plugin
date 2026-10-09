@@ -34,7 +34,7 @@ suite('MsgramStatusBar', () => {
         const item = makeFakeItem();
         new MsgramStatusBar(makeDeps(item));
 
-        assert.strictEqual(item.command, 'msgram.sidebarView.focus');
+        assert.strictEqual(item.command, 'msgram.qualityView.focus');
         assert.strictEqual(item.tooltip, 'MeasureSoftGram — clique para abrir');
         assert.strictEqual(item.showCalled, true);
     });
