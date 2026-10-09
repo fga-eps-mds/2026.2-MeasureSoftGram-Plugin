@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (scoreLoading || !scoreData) {
             return (
                 <div className="srow muted">
-                    <i className="ti ti-loader run-anim" aria-hidden="true"/>
+                    <i className="codicon codicon-loading codicon-modifier-spin run-anim" aria-hidden="true"/>
                     <span className="stxt">carregando...</span>
                 </div>
             );
@@ -40,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         if (scoreData.noData) {
             return (
                 <div className="srow muted">
-                    <i className="ti ti-mood-empty" aria-hidden="true"/>
+                    <i className="codicon codicon-circle-slash" aria-hidden="true"/>
                     <span className="stxt">nenhum dado disponível</span>
                 </div>
             );
@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <React.Fragment key={c.key}>
                     <div className="mrow" onClick={() => onShowTab('dashboard')}>
                         <div className="mn">
-                            <i className={`ti ti-chart-dots ${status}`} aria-hidden="true"/> {c.name}
+                            <i className={`codicon codicon-circle-filled ${status}`} aria-hidden="true"/> {c.name}
                         </div>
                         <span className={`mv ${status}`}>{c.value.toFixed(2)}</span>
                     </div>
@@ -77,7 +77,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {organizations.length > 1 && (
                 <div className="sblock">
                     <div className="slbl">
-                        <i className="ti ti-building" aria-hidden="true"/> Organização
+                        <i className="codicon codicon-organization" aria-hidden="true"/> Organização
                     </div>
                     <select
                         id="org-select"
@@ -96,7 +96,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {repos.length > 0 && (
                 <div className="sblock">
                     <div className="slbl">
-                        <i className="ti ti-git-branch" aria-hidden="true"/> Repositório
+                        <i className="codicon codicon-repo" aria-hidden="true"/> Repositório
                     </div>
                     <select
                         id="repo-select"
@@ -116,13 +116,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <div className="sblock">
                 <div className="sec-title">
-                    <i className="ti ti-trophy" aria-hidden="true"/> Nota do Produto
+                    <i className="codicon codicon-star-full" aria-hidden="true"/> Nota do Produto
                 </div>
 
                 <div className="score-box">
                     <div className="score-num" id="sb-score">
                         {scoreLoading ? (
-                            <i className="ti ti-loader run-anim" aria-hidden="true"/>
+                            <i className="codicon codicon-loading codicon-modifier-spin run-anim" aria-hidden="true"/>
                         ) : scoreData ? (
                             scoreData.score.toFixed(2)
                         ) : (
@@ -134,13 +134,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {!scoreLoading && scoreData?.noData && (
                     <div className="notif warn-n compact">
-                        <i className="ti ti-alert-circle" aria-hidden="true"/>
+                        <i className="codicon codicon-warning" aria-hidden="true"/>
                         <span>Métricas ainda não calculadas para este repositório.</span>
                     </div>
                 )}
 
                 <div className="sec-title">
-                    <i className="ti ti-chart-bar" aria-hidden="true"/> Características
+                    <i className="codicon codicon-graph" aria-hidden="true"/> Características
                 </div>
 
                 <div id="chars-sidebar">
@@ -150,7 +150,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="divider"/>
 
                 <div className="sec-title">
-                    <i className="ti ti-info-circle" aria-hidden="true"/> Status
+                    <i className="codicon codicon-info" aria-hidden="true"/> Status
                 </div>
                 <div className="srow">
                     <div className={`sdot ${scoreData ? 'on' : 'off'}`}/>

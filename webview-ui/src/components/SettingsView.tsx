@@ -100,7 +100,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="fd token-status" data-testid={testId}>
             {saved ? (
                 <>
-                    <i className="ti ti-lock-check" aria-hidden="true"/> salvo ✓ no Secret Storage.
+                    <i className="codicon codicon-lock" aria-hidden="true"/> salvo ✓ no Secret Storage.
                     Digite um novo valor para substituir, ou{' '}
                     <button
                         type="button"
@@ -113,7 +113,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 </>
             ) : (
                 <>
-                    <i className="ti ti-lock-open" aria-hidden="true"/> não configurado.
+                    <i className="codicon codicon-unlock" aria-hidden="true"/> não configurado.
                 </>
             )}
         </div>
@@ -123,7 +123,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="vw" id="view-settings">
             <div className="sf">
                 <div className="notif" style={{marginBottom: 14}}>
-                    <i className="ti ti-info-circle" aria-hidden="true"/>
+                    <i className="codicon codicon-info" aria-hidden="true"/>
                     <span>
                         Tokens ficam no Secret Storage do VS Code. Os demais campos ficam em{' '}
                         <code>settings.json</code> do workspace (prefixo <code>msgram.</code>).
@@ -225,11 +225,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="fsave">
                     <button className="btn" type="button" onClick={handleSave}>
-                        <i className="ti ti-device-floppy" aria-hidden="true"/> Salvar
+                        <i className="codicon codicon-save" aria-hidden="true"/> Salvar
                     </button>
                     {savedFeedback && (
                         <span id="save-fb" className="feedback-ok">
-                            <i className="ti ti-check" aria-hidden="true"/> Configurações salvas
+                            <i className="codicon codicon-check" aria-hidden="true"/> Configurações salvas
                         </span>
                     )}
                 </div>

@@ -99,7 +99,7 @@ describe('Sidebar', () => {
         it('deve exibir ícone de loading no score-box quando scoreLoading', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreLoading={true}/>);
             const scoreBox = document.getElementById('sb-score')!;
-            expect(scoreBox.querySelector('.ti-loader')).toBeInTheDocument();
+            expect(scoreBox.querySelector('.codicon-loading')).toBeInTheDocument();
         });
 
         it('deve exibir o score formatado quando há dados', () => {
