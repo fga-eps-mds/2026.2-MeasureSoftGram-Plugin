@@ -22,7 +22,7 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, on
         <div className="view-header">
             <div>
                 <div className="view-title">
-                    <i className="ti ti-settings-off" aria-hidden="true"/>
+                    <i className="codicon codicon-gear" aria-hidden="true"/>
                     <span>Extensão não está configurada</span>
                 </div>
                 <div className="view-sub">
@@ -32,7 +32,7 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, on
         </div>
 
         <div className="notif" style={{marginBottom: 14}}>
-            <i className="ti ti-info-circle" aria-hidden="true"/>
+            <i className="codicon codicon-info" aria-hidden="true"/>
             <span>
                 Falta{missing.length > 1 ? 'm' : ''}:
             </span>
@@ -41,17 +41,17 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, on
         <ul className="nc-list" id="nc-missing">
             {missing.map((m) => (
                 <li key={m} className="nc-item">
-                    <i className="ti ti-alert-circle" aria-hidden="true"/> {LABELS[m]}
+                    <i className="codicon codicon-warning" aria-hidden="true"/> {LABELS[m]}
                 </li>
             ))}
         </ul>
 
         <div className="nc-actions">
             <button className="btn" type="button" onClick={onOpenSettings}>
-                <i className="ti ti-settings" aria-hidden="true"/> Abrir Settings
+                <i className="codicon codicon-settings-gear" aria-hidden="true"/> Abrir Settings
             </button>
             <button className="btn btn-secondary" type="button" onClick={onOpenVscodeSettings}>
-                <i className="ti ti-file-code" aria-hidden="true"/> Editar settings.json
+                <i className="codicon codicon-file-code" aria-hidden="true"/> Editar settings.json
             </button>
         </div>
 

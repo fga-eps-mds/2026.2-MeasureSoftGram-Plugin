@@ -67,20 +67,20 @@ export const ActionView: React.FC<ActionViewProps> = ({
         <div className="sf">
             {alert && (
                 <div className="notif err-n" style={{marginBottom: 12}}>
-                    <i className="ti ti-alert-triangle" aria-hidden="true"/>
+                    <i className="codicon codicon-warning" aria-hidden="true"/>
                     <span>{alert}</span>
                 </div>
             )}
 
             {blocked && (
                 <div className="notif warn-n" style={{marginBottom: 12}} data-testid="action-blocked">
-                    <i className="ti ti-brand-docker" aria-hidden="true"/>
+                    <i className="codicon codicon-vm" aria-hidden="true"/>
                     <span>{blockedMessage(blocked)}</span>
                 </div>
             )}
 
             <div className="notif" style={{marginBottom: 12}}>
-                <i className="ti ti-info-circle"/>
+                <i className="codicon codicon-info"/>
                 <span>
                     Edite o <strong>msgram.yml</strong> abaixo.
                     {yamlExists !== null && (

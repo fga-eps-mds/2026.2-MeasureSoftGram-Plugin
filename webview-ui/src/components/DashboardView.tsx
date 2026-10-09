@@ -60,7 +60,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="view-header">
                 <div>
                     <div className="view-title">
-                        <i className="ti ti-chart-radar" aria-hidden="true"/>
+                        <i className="codicon codicon-dashboard" aria-hidden="true"/>
                         <span>MeasureSoftGram</span>
                     </div>
                     <div className="view-sub">
@@ -72,7 +72,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Loading state */}
             {scoreLoading && (
                 <div className="notif" style={{marginBottom: 14}}>
-                    <i className="ti ti-loader run-anim" aria-hidden="true"/>
+                    <i className="codicon codicon-loading codicon-modifier-spin run-anim" aria-hidden="true"/>
                     <span>Carregando dados do produto...</span>
                 </div>
             )}
@@ -80,7 +80,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* No data warning */}
             {!scoreLoading && scoreData?.noData && (
                 <div className="notif warn-n" id="notif-no-data">
-                    <i className="ti ti-alert-circle" aria-hidden="true"/>
+                    <i className="codicon codicon-warning" aria-hidden="true"/>
                     <span>
                         Este repositório ainda não possui métricas calculadas no MeasureSoftGram.
                         Execute a Action para gerar os dados.
@@ -92,7 +92,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {!scoreLoading && hasGoal && worstChar && (
                 <div className="goal-warn show" id="goal-warn">
                     <div className="cw-title">
-                        <i className="ti ti-target-arrow" aria-hidden="true"/> Atenção: característica abaixo da meta
+                        <i className="codicon codicon-target" aria-hidden="true"/> Atenção: característica abaixo da meta
                     </div>
                     <div className="cw-desc">
                         <strong className="warn-strong">{worstChar.name}</strong> está em{' '}
@@ -105,13 +105,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {notifText && (
                 <div className={`notif${notifType === 'error' ? ' warn-n' : ''}`} id="notif-ok" role="status">
                     <i
-                        className={`ti ${notifType === 'error' ? 'ti-alert-circle' : 'ti-circle-check'}`}
+                        className={`codicon ${notifType === 'error' ? 'codicon-warning' : 'codicon-pass'}`}
                         aria-hidden="true"
                     />
                     <span>{notifText}</span>
                     {showRetry && (
                         <button className="btn btn-small" type="button" onClick={onRetry} style={{marginLeft: 'auto'}}>
-                            <i className="ti ti-refresh" aria-hidden="true"/> Tentar de novo
+                            <i className="codicon codicon-refresh" aria-hidden="true"/> Tentar de novo
                         </button>
                     )}
                 </div>
@@ -143,7 +143,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     const mark = c.goal === null || c.value >= c.goal ? '✓' : '~';
                     return (
                         <div key={c.key} className={`char-row ${status}`}>
-                            <i className={`ti ti-chart-dots char-icon ${status}`} aria-hidden="true"/>
+                            <i className={`codicon codicon-circle-filled char-icon ${status}`} aria-hidden="true"/>
                             <span className="char-name">{c.name}</span>
                             <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
                             <span className="char-goal">

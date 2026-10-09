@@ -47,12 +47,12 @@ describe('RunButton', () => {
 
     it('deve exibir ícone de play quando não está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        expect(screen.getByRole('button', {name: /executar/i}).querySelector('i')).toHaveClass('ti-player-play');
+        expect(screen.getByRole('button', {name: /executar/i}).querySelector('i')).toHaveClass('codicon-play');
     });
 
     it('deve exibir ícone de loader quando está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        expect(screen.getByRole('button', {name: /executando/i}).querySelector('i')).toHaveClass('ti-loader-2');
+        expect(screen.getByRole('button', {name: /executando/i}).querySelector('i')).toHaveClass('codicon-loading codicon-modifier-spin');
     });
 
     it('não mostra "Parar" quando não está rodando', () => {

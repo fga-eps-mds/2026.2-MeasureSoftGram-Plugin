@@ -14,7 +14,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@tabler/icons-webfont": "^3.49.0",
+    "@vscode/codicons": "^0.0.46-24",
     "dompurify": "^3.4.15",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
