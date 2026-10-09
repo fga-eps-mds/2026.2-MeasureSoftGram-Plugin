@@ -17,7 +17,7 @@ export class MsgramStatusBar {
 
   constructor(deps: StatusBarDeps = getDefaultDeps()) {
     this._item = deps.createStatusBarItem(1, 100);
-    this._item.command = 'msgram.sidebarView.focus';
+    this._item.command = 'msgram.qualityView.focus';
     this._item.tooltip = 'MeasureSoftGram — clique para abrir';
     this.setLoading();
     this._item.show();

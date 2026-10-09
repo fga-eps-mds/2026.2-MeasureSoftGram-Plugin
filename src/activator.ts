@@ -1,10 +1,21 @@
 export interface ActivatorVscode {
-    commands: { registerCommand: (id: string, fn: (...args: any[]) => any) => { dispose: () => void } };
+    commands: {
+        registerCommand: (id: string, fn: (...args: any[]) => any) => { dispose: () => void };
+        executeCommand?: (id: string, ...args: any[]) => Thenable<unknown>;
+    };
     window: {
         registerWebviewViewProvider: (id: string, p: any, o?: any) => { dispose: () => void };
+        registerTreeDataProvider?: (id: string, p: any) => { dispose: () => void };
         showWarningMessage?: (msg: string, ...items: string[]) => Thenable<string | undefined>;
         showInformationMessage?: (msg: string, ...items: string[]) => Thenable<string | undefined>;
     };
+}
+
+/** Árvore nativa opcional (o activator é testado sem ela). */
+export interface TreeLike {
+    refresh: () => Promise<void>;
+    selectRepository: () => Promise<void>;
+    selectOrganization: () => Promise<void>;
 }
 
 export interface ActivatorContext {
@@ -16,19 +27,38 @@ export interface ActivatorContext {
  * Registra comandos, barra lateral e barra de status. Recebe as classes
  * como parâmetro para ser testável sem o módulo `vscode`.
  */
-export function activate<S>(
+export function activate<S, P = any>(
     context: ActivatorContext,
     vscode: ActivatorVscode,
-    Panel: { render: (ctx: any, statusBar: any) => void },
+    Panel: { render: (ctx: any, statusBar: any) => P },
     Sidebar: { new(ctx: any, statusBar: any): S; viewType: string },
     StatusBar: { new(): { dispose: () => void } },
-): { sidebar: S } {
+    makeTree?: (statusBar: any) => TreeLike,
+): { sidebar: S; tree?: TreeLike } {
     const statusBar = new StatusBar();
     context.subscriptions.push(statusBar);
 
     context.subscriptions.push(
         vscode.commands.registerCommand('msgram.run', () => Panel.render(context, statusBar)),
     );
+
+    let tree: TreeLike | undefined;
+    if (makeTree && vscode.window.registerTreeDataProvider) {
+        tree = makeTree(statusBar);
+        context.subscriptions.push(vscode.window.registerTreeDataProvider('msgram.qualityView', tree));
+        context.subscriptions.push(vscode.commands.registerCommand('msgram.refresh', () => tree!.refresh()));
+        context.subscriptions.push(vscode.commands.registerCommand('msgram.selectRepository', () => tree!.selectRepository()));
+        context.subscriptions.push(vscode.commands.registerCommand('msgram.selectOrganization', () => tree!.selectOrganization()));
+        context.subscriptions.push(vscode.commands.registerCommand('msgram.openDashboard', (uid: string) => {
+            const panel: any = Panel.render(context, statusBar);
+            panel?.showTab?.('grafana', uid);
+        }));
+        context.subscriptions.push(vscode.commands.registerCommand('msgram.openActionTab', () => {
+            const panel: any = Panel.render(context, statusBar);
+            panel?.showTab?.('action');
+        }));
+        void tree.refresh();
+    }
 
     const sidebar = new Sidebar(context, statusBar);
     context.subscriptions.push(
@@ -40,10 +70,9 @@ export function activate<S>(
 
     context.subscriptions.push(
         vscode.commands.registerCommand('msgram.openSettings', async () => {
-            // Foca a barra lateral; a interface abre a aba Settings ao receber foco
-            // com o comando abaixo (tratado em US1/US2).
-            const {commands} = require('vscode');
-            await commands.executeCommand('msgram.sidebarView.focus');
+            // Abre o painel na aba Config.
+            const panel: any = Panel.render(context, statusBar);
+            panel?.showTab?.('settings');
         }),
     );
 
@@ -62,5 +91,5 @@ export function activate<S>(
         }),
     );
 
-    return {sidebar};
+    return {sidebar, tree};
 }

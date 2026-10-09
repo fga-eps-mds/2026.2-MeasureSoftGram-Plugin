@@ -56,9 +56,16 @@
     "views": {
       "msgram-sidebar": [
         {
+          "id": "msgram.qualityView",
+          "name": "Qualidade",
+          "icon": "assets/icon.svg",
+          "contextualTitle": "MeasureSoftGram"
+        },
+        {
           "type": "webview",
           "id": "msgram.sidebarView",
-          "name": "Measure"
+          "name": "Painel",
+          "visibility": "collapsed"
         }
       ]
     },
@@ -79,6 +86,36 @@
         "command": "msgram.clearTokens",
         "title": "Remover tokens salvos",
         "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.refresh",
+        "title": "Atualizar",
+        "icon": "$(refresh)",
+        "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.selectRepository",
+        "title": "Trocar repositório",
+        "icon": "$(repo)",
+        "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.selectOrganization",
+        "title": "Trocar organização",
+        "icon": "$(organization)",
+        "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.openDashboard",
+        "title": "Abrir dashboard do Grafana",
+        "icon": "$(graph)",
+        "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.openActionTab",
+        "title": "Executar Action localmente",
+        "icon": "$(play)",
+        "category": "MeasureSoftGram"
       }
     ],
     "menus": {
@@ -91,13 +128,56 @@
         },
         {
           "command": "msgram.clearTokens"
+        },
+        {
+          "command": "msgram.refresh"
+        },
+        {
+          "command": "msgram.selectRepository"
+        },
+        {
+          "command": "msgram.selectOrganization"
+        },
+        {
+          "command": "msgram.openActionTab"
+        },
+        {
+          "command": "msgram.openDashboard",
+          "when": "false"
         }
       ],
       "view/title": [
         {
+          "command": "msgram.refresh",
+          "when": "view == msgram.qualityView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "msgram.selectRepository",
+          "when": "view == msgram.qualityView && msgram.configured",
+          "group": "navigation@2"
+        },
+        {
+          "command": "msgram.openSettings",
+          "when": "view == msgram.qualityView",
+          "group": "navigation@3"
+        },
+        {
           "command": "msgram.run",
-          "when": "view == msgram.sidebarView",
-          "group": "navigation"
+          "when": "view == msgram.qualityView || view == msgram.sidebarView",
+          "group": "navigation@4"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "msgram.selectRepository",
+          "when": "view == msgram.qualityView && viewItem == repo",
+          "group": "inline"
+        },
+        {
+          "command": "msgram.selectOrganization",
+          "when": "view == msgram.qualityView && viewItem == product",
+          "group": "inline"
         }
       ]
     },
@@ -145,7 +225,14 @@
           "description": "Hosts permitidos para os dashboards do Grafana. Vazio = qualquer host HTTPS."
         }
       }
-    }
+    },
+    "viewsWelcome": [
+      {
+        "view": "msgram.qualityView",
+        "contents": "A extensão ainda não está configurada.\nInforme o token da sua conta no [MeasureSoftGram](https://msgram.lappis.rocks) e o nome do produto.\n[Configurar](command:msgram.openSettings)\n[Editar settings.json](command:workbench.action.openSettings?%5B%22msgram%22%5D)",
+        "when": "!msgram.configured"
+      }
+    ]
   },
   "scripts": {
     "install:all": "npm install && cd webview-ui && npm install",
