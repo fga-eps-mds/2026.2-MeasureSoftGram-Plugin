@@ -122,6 +122,12 @@
         "title": "Abrir site do MeasureSoftGram",
         "icon": "$(link-external)",
         "category": "MeasureSoftGram"
+      },
+      {
+        "command": "msgram.registerRepo",
+        "title": "Cadastrar este repositório no MeasureSoftGram",
+        "icon": "$(cloud-upload)",
+        "category": "MeasureSoftGram"
       }
     ],
     "menus": {
@@ -153,6 +159,9 @@
         },
         {
           "command": "msgram.openSite"
+        },
+        {
+          "command": "msgram.registerRepo"
         }
       ],
       "view/title": [

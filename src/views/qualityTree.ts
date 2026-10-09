@@ -339,7 +339,8 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
                     tooltip: 'Cadastre o repositório em um produto no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez. Ou informe o produto em Configurar.',
                     icon: new ThemeIcon('repo', new ThemeColor('charts.yellow')),
                 },
-                {kind: 'action', label: 'Cadastrar no MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
+                {kind: 'action', label: 'Cadastrar automaticamente', description: 'cria o repositório no produto que você escolher', icon: new ThemeIcon('cloud-upload'), command: {command: 'msgram.registerRepo', title: 'Cadastrar'}},
+                {kind: 'action', label: 'Abrir o site do MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
                 {kind: 'action', label: 'Informar o produto manualmente', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
                 {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
             ];

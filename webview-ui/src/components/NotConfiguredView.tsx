@@ -7,6 +7,7 @@ interface NotConfiguredViewProps {
     unregisteredRepo?: string;
     onOpenSettings: () => void;
     onOpenVscodeSettings: () => void;
+    onRegisterRepo?: () => void;
 }
 
 const LABELS: Record<MissingSetting, string> = {
@@ -19,7 +20,7 @@ const LABELS: Record<MissingSetting, string> = {
  * Tela exibida no lugar do painel quando falta configuração.
  * Nunca mostra score, repositórios ou avisos: não há dado real para mostrar.
  */
-export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, unregisteredRepo, onOpenSettings, onOpenVscodeSettings}) => (
+export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, unregisteredRepo, onOpenSettings, onOpenVscodeSettings, onRegisterRepo}) => (
     <div className="vw on" id="view-not-configured">
         <div className="view-header">
             <div>
@@ -38,9 +39,16 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
                 <i className="codicon codicon-repo" aria-hidden="true"/>
                 <span>
                     O repositório <strong>{unregisteredRepo}</strong> não está cadastrado em nenhum produto desta conta.
-                    Cadastre-o no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez,
-                    ou informe abaixo o produto onde ele está.
+                    Cadastre-o com um clique, ou informe abaixo o produto onde ele está.
                 </span>
+            </div>
+        )}
+
+        {unregisteredRepo && onRegisterRepo && (
+            <div className="nc-actions">
+                <button className="btn" type="button" onClick={onRegisterRepo} data-testid="register-repo">
+                    <i className="codicon codicon-cloud-upload" aria-hidden="true"/> Cadastrar automaticamente
+                </button>
             </div>
         )}
 

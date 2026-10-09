@@ -228,6 +228,10 @@ const App: React.FC = () => {
         vscode.postMessage({command: 'open_vscode_settings'});
     };
 
+    const handleRegisterRepo = () => {
+        vscode.postMessage({command: 'register_repo'});
+    };
+
     const handleSelectRepo = (repoPk: number) => {
         setSelectedRepoPk(repoPk);
         vscode.postMessage({command: 'select_repo', repoPk});
@@ -312,6 +316,7 @@ const App: React.FC = () => {
                     <NotConfiguredView
                         missing={missing}
                         unregisteredRepo={unregisteredRepo}
+                        onRegisterRepo={handleRegisterRepo}
                         onOpenSettings={() => showTab('settings')}
                         onOpenVscodeSettings={handleOpenVscodeSettings}
                     />

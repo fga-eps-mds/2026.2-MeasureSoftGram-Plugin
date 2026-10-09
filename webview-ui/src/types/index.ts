@@ -117,6 +117,7 @@ export type PanelMessage =
     | { command: 'save_settings'; data: SettingsPayload }
     | { command: 'clear_secret'; key: SecretKey }
     | { command: 'open_vscode_settings' }
+    | { command: 'register_repo' }
     | { command: 'retry' }
     | { command: 'request_yaml' }
     | { command: 'save_action'; yaml: string }

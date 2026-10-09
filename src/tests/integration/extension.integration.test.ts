@@ -26,7 +26,7 @@ suite('MeasureSoftGram — integração em VS Code real', () => {
 
     test('registra os comandos msgram.run, msgram.openSettings e msgram.clearTokens', async () => {
         const all = await vscode.commands.getCommands(true);
-        for (const id of ['msgram.run', 'msgram.openSettings', 'msgram.clearTokens', 'msgram.refresh', 'msgram.selectRepository', 'msgram.selectOrganization', 'msgram.openDashboard', 'msgram.openActionTab']) {
+        for (const id of ['msgram.run', 'msgram.openSettings', 'msgram.clearTokens', 'msgram.refresh', 'msgram.selectRepository', 'msgram.selectOrganization', 'msgram.openDashboard', 'msgram.openActionTab', 'msgram.openSite', 'msgram.registerRepo']) {
             assert.ok(all.includes(id), `comando ${id} não registrado`);
         }
     });

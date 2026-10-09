@@ -7,7 +7,7 @@
 import * as assert from 'assert';
 import * as http from 'node:http';
 import {AddressInfo} from 'node:net';
-import {discoverRepository, fetchGoals, fetchRepositories, fetchScoreForRepo, MsgramSettings} from '../../services/msgramApi';
+import {createProduct, createRepository, discoverRepository, fetchGoals, fetchRepositories, fetchScoreForRepo, listProducts, MsgramSettings} from '../../services/msgramApi';
 import {HttpError} from '../../services/httpClient';
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
@@ -33,8 +33,9 @@ const DEFAULT_CHARS = [
   {key: 'functional_suitability', name: 'Functional Suitability', latest: null},
 ];
 
-function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promise<void>; hits: string[] }> {
+function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promise<void>; hits: string[]; posted: { path: string; body: any }[] }> {
   const hits: string[] = [];
+  const posted: { path: string; body: any }[] = [];
   const orgs = fx.orgs ?? [{id: 1, name: 'fga-eps-mds'}];
   const products = fx.products ?? [{id: 3, name: 'MeasureSoftGram'}];
   const repos = fx.repos ?? [{id: 6, name: 'Service'}, {id: 7, name: 'Core'}];
@@ -70,6 +71,19 @@ function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promi
     }
 
     const mProducts = p.match(/^\/api\/v1\/organizations\/(\d+)\/products\/$/);
+    if (mProducts && req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => { posted.push({path: p, body: JSON.parse(body)}); json(201, {id: 77, name: JSON.parse(body).name, description: ''}); });
+      return;
+    }
+    const mReposPost = p.match(/^\/api\/v1\/organizations\/(\d+)\/products\/(\d+)\/repositories\/$/);
+    if (mReposPost && req.method === 'POST') {
+      let body = '';
+      req.on('data', (c) => (body += c));
+      req.on('end', () => { posted.push({path: p, body: JSON.parse(body)}); json(201, {id: 555, name: JSON.parse(body).name}); });
+      return;
+    }
     if (mProducts) {
       return json(200, {count: products.length, next: null, previous: null, results: products});
     }
@@ -115,6 +129,7 @@ function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promi
       resolve({
         baseUrl: `http://127.0.0.1:${port}`,
         hits,
+        posted,
         close: () => new Promise((r) => server.close(() => r())),
       });
     });
@@ -335,6 +350,29 @@ suite('msgramApi contrato — discoverRepository', () => {
       const before = srv.hits.length;
       assert.strictEqual(await discoverRepository(settings(srv.baseUrl), {}), null);
       assert.strictEqual(srv.hits.length, before);
+    } finally {
+      await srv.close();
+    }
+  });
+});
+
+suite('msgramApi contrato — cadastro', () => {
+  test('listProducts, createProduct e createRepository usam as rotas e os campos do Service', async () => {
+    const srv = await startServer({products: [{id: 10, name: ' Measure '}]});
+    try {
+      const products = await listProducts(settings(srv.baseUrl), 1);
+      assert.deepStrictEqual(products, [{id: 10, name: 'Measure'}]);
+
+      const product = await createProduct(settings(srv.baseUrl), 1, {name: 'Novo'});
+      assert.deepStrictEqual(product, {id: 77, name: 'Novo'});
+      assert.deepStrictEqual(srv.posted[0], {path: '/api/v1/organizations/1/products/', body: {name: 'Novo', description: ''}});
+
+      const repo = await createRepository(settings(srv.baseUrl), 1, 77, {name: 'meu-repo', url: 'https://github.com/x/meu-repo', description: 'd'});
+      assert.deepStrictEqual(repo, {id: 555, name: 'meu-repo'});
+      assert.deepStrictEqual(srv.posted[1], {
+        path: '/api/v1/organizations/1/products/77/repositories/',
+        body: {name: 'meu-repo', url: 'https://github.com/x/meu-repo', description: 'd', platform: 'github'},
+      });
     } finally {
       await srv.close();
     }
