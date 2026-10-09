@@ -13,7 +13,9 @@ import {
 } from '../services/msgramApi';
 import {HttpError} from '../services/httpClient';
 import {ActRunner, sharedActRunner} from '../services/actRunner';
-import {detectWorkspaceHints, pickMatchingRepo, WorkspaceHints} from '../utilities/workspaceRepo';
+import {detectWorkspaceHints, WorkspaceHints} from '../utilities/workspaceRepo';
+import {resolveRepoContext} from '../services/repoResolver';
+import {discoverRepository as defaultDiscoverRepository} from '../services/msgramApi';
 import {
     clearSecret,
     FullSettings,
@@ -23,6 +25,7 @@ import {
     makeSettingsDeps,
     saveSettings,
     SettingsDeps,
+    updateProjectSettings,
 } from '../config/settings';
 import type {ExtensionMessage, PanelMessage, ScoreErrorKind, SecretKey, SettingsPayload} from './messages';
 import type {MsgramStatusBar} from '../statusbar/msgramStatusBar';
@@ -87,6 +90,8 @@ export abstract class MeasureSoftGramBase {
     protected _fetchGrafanaDashboard = defaultFetchGrafanaDashboard;
     /** Compartilhado entre painel e barra lateral: uma execução por janela. */
     protected _actRunner: ActRunner = sharedActRunner();
+    /** Injetável nos testes: descoberta do repositório em toda a conta. */
+    protected _discoverRepository = defaultDiscoverRepository;
     /** Injetável nos testes: pistas da pasta aberta (remote origin / nome). */
     protected _detectWorkspaceHints: () => Promise<WorkspaceHints> = async () => {
         const folder = workspace.workspaceFolders?.[0];
@@ -198,7 +203,8 @@ export abstract class MeasureSoftGramBase {
         const settings = await this._loadPersistedSettings();
         await this._postSettingsLoaded();
         const missing = isConfigured(settings);
-        if (missing.length) {
+        const onlyProduct = missing.length === 1 && missing[0] === 'productName';
+        if (missing.length && !onlyProduct) {
             this._context = null;
             this._selectedRepo = null;
             this.onNotConfigured();
@@ -232,35 +238,46 @@ export abstract class MeasureSoftGramBase {
 
         try {
             const settings = await this._requireSettings();
-            this._context = await fetchRepos(settings, this.logger());
-            const repos = this._context.repos;
+            const hints = await this._detectWorkspaceHints();
+            const result = await resolveRepoContext(settings, hints, this._selectedRepo?.id ?? null, {
+                fetchRepositories: fetchRepos,
+                discoverRepository: this._discoverRepository,
+                persist: async (patch) => {
+                    await updateProjectSettings(patch, this._settingsDeps);
+                    this._orgPkOverride = null;
+                    await this._loadPersistedSettings();
+                    await this._postSettingsLoaded();
+                },
+                log: this.logger(),
+            });
+
+            if (result.kind === 'missingProduct') {
+                this._context = null;
+                this._selectedRepo = null;
+                this.onNotConfigured();
+                this.post({command: 'not_configured', missing: ['productName']});
+                return;
+            }
+            this._context = result.context;
             this.post({
                 command: 'orgs_loaded',
                 organizations: this._context.organizations ?? [],
                 selectedOrgPk: this._context.orgPk,
             });
-            if (!repos.length) {
-                this.post({command: 'repos_loaded', repos});
+            if (result.kind === 'empty') {
+                this._selectedRepo = null;
+                this.post({command: 'repos_loaded', repos: []});
                 this.onReposEmpty();
                 this.post({command: 'score_error', message: 'Nenhum repositório encontrado.', kind: 'not_found'});
                 return;
             }
-
-            // Mantém a escolha da pessoa ao recarregar; senão tenta a pasta aberta; senão o primeiro.
-            const keep = this._selectedRepo && repos.find((r) => r.id === this._selectedRepo!.id);
-            let detected = false;
-            let chosen = keep ?? repos[0];
-            if (!keep) {
-                const hints = await this._detectWorkspaceHints();
-                const match = pickMatchingRepo(repos, hints);
-                if (match) {
-                    chosen = match;
-                    detected = true;
-                    this.logger()(`[${new Date().toLocaleTimeString('pt-BR')}] → Repositório da pasta aberta: "${match.name}" (${hints.remoteName ?? hints.folderName})`);
-                }
+            if (result.switched) {
+                this.logger()(`[${new Date().toLocaleTimeString('pt-BR')}] → Produto trocado para "${result.switched.productName}" (${result.switched.orgName}) por causa da pasta aberta.`);
+            } else if (result.detected) {
+                this.logger()(`[${new Date().toLocaleTimeString('pt-BR')}] → Repositório da pasta aberta: "${result.selectedRepo.name}"`);
             }
-            this._selectedRepo = chosen;
-            this.post({command: 'repos_loaded', repos, selectedRepoPk: chosen.id, detected});
+            this._selectedRepo = result.selectedRepo;
+            this.post({command: 'repos_loaded', repos: this._context.repos, selectedRepoPk: result.selectedRepo.id, detected: result.detected});
             await this._loadScoreForSelected(fetchScore);
         } catch (err) {
             const message = this._errorMessage(err, 'Erro ao buscar repositórios.');

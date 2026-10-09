@@ -57,7 +57,8 @@ function makeExtensionContext(overrides: Partial<{
 }> = {}) {
     const ws: Record<string, string> = {};
     if (overrides.serviceUrl !== undefined) { ws['msgram.serviceUrl'] = overrides.serviceUrl; }
-    if (overrides.productName !== undefined) { ws['msgram.productName'] = overrides.productName; }
+    // Produto padrão nos testes; passe productName: '' para simular "sem produto".
+    ws['msgram.productName'] = overrides.productName ?? 'measuresoftgram';
     return {
         workspaceState: makeWorkspaceState(ws),
         secrets: makeSecrets(overrides.token ?? ''),
@@ -106,6 +107,8 @@ class TestableBase extends MeasureSoftGramBase {
                 public fetchScore = makeFetchScoreForRepo()) {
         super(ctx, undefined, makeSettingsDepsFor(ctx));
         (this as any)._statusBar = this.statusBar;
+        (this as any)._discoverRepository = async () => null;
+        (this as any)._detectWorkspaceHints = async () => ({});
     }
 
     protected get _webview() { return this.webviewInstance as any; }
@@ -159,7 +162,7 @@ suite('MeasureSoftGramBase', () => {
     });
 
     test('usa valores padrão quando não há configurações persistidas', async () => {
-        const ctx = makeExtensionContext();
+        const ctx = makeExtensionContext({ productName: '' });
         const base = new TestableBase(ctx);
 
         await base.loadPersistedSettings();
@@ -312,7 +315,7 @@ suite('MeasureSoftGramBase', () => {
     });
 
     test('request_score sem produto lista productName entre os faltantes', async () => {
-        const base = new TestableBase(makeExtensionContext({ token: 'tok' }));
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: '' }));
 
         await base.handleMessage({ command: 'request_score' });
 
@@ -749,5 +752,54 @@ suite('MeasureSoftGramBase', () => {
         await base.handleMessage({ command: 'retry' });
 
         assert.strictEqual(base.getSelectedRepo()?.id, 3);
+    });
+
+    // ── Descoberta automática do repositório da pasta aberta ─────────────
+
+    const FOUND = {
+        orgPk: 2, orgName: 'Luiza Maluf', organizations: [{ id: 1, name: 'EPS/MDS' }, { id: 2, name: 'Luiza Maluf' }],
+        productPk: 21, productName: 'Integracao', repos: [{ id: 200, name: 'Integracao-de-Dados' }], repo: { id: 200, name: 'Integracao-de-Dados' },
+    };
+
+    test('pasta aberta fora do produto configurado: descobre, troca o produto, persiste e carrega', async () => {
+        const ctx = makeExtensionContext({ token: 'tok', productName: 'Measure' });
+        const base = new TestableBase(ctx, makeFetchRepositories(threeRepos));
+        (base as any)._detectWorkspaceHints = async () => ({ remoteName: 'Integracao-de-Dados' });
+        (base as any)._discoverRepository = async () => FOUND;
+
+        await base.handleMessage({ command: 'request_score' });
+
+        assert.strictEqual(base.getSelectedRepo()?.id, 200);
+        assert.strictEqual(base.getSettings().productName, 'Integracao', 'produto persistido na configuração');
+        assert.strictEqual(base.getSettings().organizationName, 'Luiza Maluf');
+        const repos = base.webviewInstance.posted.find((m: any) => m.command === 'repos_loaded');
+        assert.strictEqual(repos?.selectedRepoPk, 200);
+        assert.strictEqual(repos?.detected, true);
+        const settingsMsgs = base.webviewInstance.posted.filter((m: any) => m.command === 'settings_loaded');
+        assert.strictEqual(settingsMsgs[settingsMsgs.length - 1].data.productName, 'Integracao');
+        assert.ok(base.webviewInstance.posted.some((m: any) => m.command === 'score_loaded'));
+    });
+
+    test('sem produto configurado mas com pasta aberta cadastrada: entra direto', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: '' }));
+        (base as any)._detectWorkspaceHints = async () => ({ folderName: 'Integracao-de-Dados' });
+        (base as any)._discoverRepository = async () => FOUND;
+
+        await base.handleMessage({ command: 'request_score' });
+
+        assert.ok(!base.webviewInstance.posted.some((m: any) => m.command === 'not_configured'));
+        assert.strictEqual(base.getSelectedRepo()?.id, 200);
+        assert.strictEqual(base.loadState, 'ready');
+    });
+
+    test('sem produto configurado e pasta aberta desconhecida: not_configured só com productName', async () => {
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: '' }));
+        (base as any)._detectWorkspaceHints = async () => ({ folderName: 'nada' });
+
+        await base.handleMessage({ command: 'request_score' });
+
+        const nc = base.webviewInstance.posted.find((m: any) => m.command === 'not_configured');
+        assert.deepStrictEqual(nc?.missing, ['productName']);
+        assert.strictEqual(base.loadState, 'not_configured');
     });
 });

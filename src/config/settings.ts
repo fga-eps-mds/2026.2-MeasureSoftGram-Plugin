@@ -183,6 +183,20 @@ export async function saveSettings(payload: SettingsPayload, deps: SettingsDeps)
   }
 }
 
+/** Atualiza só alguns campos não sensíveis (ex.: produto descoberto pela pasta aberta). */
+export async function updateProjectSettings(
+    patch: Partial<Pick<ProjectSettings, 'productName' | 'organizationName' | 'serviceUrl'>>,
+    deps: SettingsDeps,
+): Promise<void> {
+  const config = deps.getConfiguration();
+  const target = deps.hasWorkspaceFolder() ? deps.ConfigurationTarget.Workspace : deps.ConfigurationTarget.Global;
+  for (const [key, value] of Object.entries(patch)) {
+    if (value !== undefined) {
+      await config.update(key, key === 'serviceUrl' ? normalizeBaseUrl(String(value)) : String(value).trim(), target);
+    }
+  }
+}
+
 export async function clearSecret(key: SecretKey, deps: SettingsDeps): Promise<void> {
   await deps.secrets.delete(key);
 }

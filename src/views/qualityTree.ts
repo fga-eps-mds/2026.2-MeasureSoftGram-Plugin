@@ -18,8 +18,10 @@ import {
     window,
     workspace,
 } from 'vscode';
-import {FullSettings, isConfigured, loadSettings, SettingsDeps} from '../config/settings';
+import {FullSettings, isConfigured, loadSettings, SettingsDeps, updateProjectSettings} from '../config/settings';
+import {resolveRepoContext} from '../services/repoResolver';
 import {
+    discoverRepository as defaultDiscover,
     fetchGrafanaDashboards as defaultFetchDashboards,
     fetchRepositories as defaultFetchRepositories,
     fetchScoreForRepo as defaultFetchScoreForRepo,
@@ -29,7 +31,7 @@ import {
     ScoreData,
 } from '../services/msgramApi';
 import {HttpError} from '../services/httpClient';
-import {detectWorkspaceHints, pickMatchingRepo} from '../utilities/workspaceRepo';
+import {detectWorkspaceHints} from '../utilities/workspaceRepo';
 import {getOutputChannel} from '../utilities/log';
 import type {MsgramStatusBar} from '../statusbar/msgramStatusBar';
 
@@ -53,6 +55,7 @@ export interface QualityTreeDeps {
     fetchRepositories?: typeof defaultFetchRepositories;
     fetchScoreForRepo?: typeof defaultFetchScoreForRepo;
     fetchDashboards?: typeof defaultFetchDashboards;
+    discoverRepository?: typeof defaultDiscover;
     detectHints?: () => Promise<{ remoteName?: string; folderName?: string }>;
     statusBar?: MsgramStatusBar;
     setContext?: (key: string, value: unknown) => Thenable<unknown>;
@@ -77,6 +80,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     private readonly _fetchRepositories: typeof defaultFetchRepositories;
     private readonly _fetchScoreForRepo: typeof defaultFetchScoreForRepo;
     private readonly _fetchDashboards: typeof defaultFetchDashboards;
+    private readonly _discover: typeof defaultDiscover;
     private readonly _detectHints: () => Promise<{ remoteName?: string; folderName?: string }>;
     private readonly _setContext: (key: string, value: unknown) => Thenable<unknown>;
 
@@ -84,6 +88,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
         this._fetchRepositories = _deps.fetchRepositories ?? defaultFetchRepositories;
         this._fetchScoreForRepo = _deps.fetchScoreForRepo ?? defaultFetchScoreForRepo;
         this._fetchDashboards = _deps.fetchDashboards ?? defaultFetchDashboards;
+        this._discover = _deps.discoverRepository ?? defaultDiscover;
         this._detectHints = _deps.detectHints ?? (async () => {
             const folder = workspace.workspaceFolders?.[0];
             return folder ? detectWorkspaceHints(folder.uri.fsPath) : {};
@@ -134,8 +139,9 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             const base = await loadSettings(this._deps.settingsDeps);
             this._settings = this._orgPkOverride !== null ? {...base, organizationPk: this._orgPkOverride} : base;
             const missing = isConfigured(this._settings);
-            await this._setContext('msgram.configured', missing.length === 0);
-            if (missing.length) {
+            const onlyProduct = missing.length === 1 && missing[0] === 'productName';
+            await this._setContext('msgram.configured', missing.length === 0 || onlyProduct);
+            if (missing.length && !onlyProduct) {
                 this._state = 'not_configured';
                 this._context = null;
                 this._selectedRepo = null;
@@ -145,9 +151,32 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
                 return;
             }
 
-            this._context = await this._fetchRepositories(this._settings, (m) => getOutputChannel().appendLine(m));
-            const repos = this._context.repos;
-            if (!repos.length) {
+            const hints = await this._detectHints();
+            const log = (m: string) => getOutputChannel().appendLine(m);
+            const result = await resolveRepoContext(this._settings, hints, this._selectedRepo?.id ?? null, {
+                fetchRepositories: this._fetchRepositories,
+                discoverRepository: this._discover,
+                persist: async (patch) => {
+                    await updateProjectSettings(patch, this._deps.settingsDeps);
+                    this._orgPkOverride = null;
+                    const base = await loadSettings(this._deps.settingsDeps);
+                    this._settings = base;
+                },
+                log,
+            });
+
+            if (result.kind === 'missingProduct') {
+                await this._setContext('msgram.configured', false);
+                this._state = 'not_configured';
+                this._context = null;
+                this._selectedRepo = null;
+                this._score = null;
+                this._deps.statusBar?.setNotConfigured();
+                this.fire();
+                return;
+            }
+            this._context = result.context;
+            if (result.kind === 'empty') {
                 this._selectedRepo = null;
                 this._score = null;
                 this._state = 'ready';
@@ -155,18 +184,12 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
                 this.fire();
                 return;
             }
-
-            const keep = this._selectedRepo && repos.find((r) => r.id === this._selectedRepo!.id);
-            if (keep) {
-                this._selectedRepo = keep;
-            } else {
-                const hints = await this._detectHints();
-                const match = pickMatchingRepo(repos, hints);
-                this._selectedRepo = match ?? repos[0];
-                if (match) {
-                    this.log(`repositório da pasta aberta: ${match.name}`);
-                }
+            if (result.switched) {
+                this.log(`produto trocado para "${result.switched.productName}" (${result.switched.orgName}) pela pasta aberta`);
+            } else if (result.detected) {
+                this.log(`repositório da pasta aberta: ${result.selectedRepo.name}`);
             }
+            this._selectedRepo = result.selectedRepo;
             await this._loadScore();
         } catch (err) {
             this._state = 'error';
