@@ -22,6 +22,8 @@ export const MAX_TIMEOUT_MS = 60_000;
 export interface FullSettings extends ProjectSettings {
   token: string;
   githubToken: string;
+  /** Organização escolhida no seletor da interface nesta sessão (por id). */
+  organizationPk?: number;
 }
 
 /** Subconjunto mínimo do `WorkspaceConfiguration` que usamos. */

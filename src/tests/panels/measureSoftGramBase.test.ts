@@ -375,10 +375,10 @@ suite('MeasureSoftGramBase', () => {
         assert.strictEqual(calls, 2);
     });
 
-    test('select_org recarrega usando a organização escolhida', async () => {
-        const seen: string[] = [];
+    test('select_org recarrega usando a organização escolhida (por id)', async () => {
+        const seen: any[] = [];
         const fetchRepos = async (s: any) => {
-            seen.push(s.organizationName);
+            seen.push(s.organizationPk);
             return { orgPk: 1, orgName: 'o', organizations: [{ id: 1, name: 'o' }, { id: 2, name: 'dois' }], productPk: 2, productName: 'P', repos: [{ id: 1, name: 'r' }] };
         };
         const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), fetchRepos as any);
@@ -386,7 +386,7 @@ suite('MeasureSoftGramBase', () => {
 
         await base.handleMessage({ command: 'select_org', orgPk: 2 });
 
-        assert.strictEqual(seen[seen.length - 1], 'dois');
+        assert.strictEqual(seen[seen.length - 1], 2);
     });
 
     test('clear_secret do token apaga o segredo e volta para not_configured', async () => {

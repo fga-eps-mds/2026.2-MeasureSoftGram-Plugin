@@ -171,6 +171,17 @@ suite('msgramApi contrato — fetchRepositories', () => {
     }
   });
 
+  test('organizationPk escolhe a organização certa mesmo com nomes repetidos', async () => {
+    const srv = await startServer({orgs: [{id: 5, name: 'Luiza Maluf'}, {id: 6, name: 'Luiza Maluf'}]});
+    try {
+      const ctx = await fetchRepositories(settings(srv.baseUrl, {organizationPk: 6}));
+      assert.strictEqual(ctx.orgPk, 6);
+      assert.ok(srv.hits.some((h) => h.startsWith('/api/v1/organizations/6/products/')));
+    } finally {
+      await srv.close();
+    }
+  });
+
   test('produto inexistente lança not_found listando os disponíveis', async () => {
     const srv = await startServer({products: [{id: 1, name: 'Alpha'}, {id: 2, name: 'Beta'}]});
     try {
