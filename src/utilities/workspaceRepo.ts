@@ -17,6 +17,8 @@ export interface RepoLike {
 export interface WorkspaceHints {
     /** nome do repositório extraído do remote origin, ex. "MeasureSoftGram-Plugin" */
     remoteName?: string;
+    /** URL https do remote origin, ex. "https://github.com/org/Repo" */
+    remoteUrl?: string;
     /** nome da pasta aberta */
     folderName?: string;
 }
@@ -50,11 +52,28 @@ export function repoNameFromRemote(url: string): string | undefined {
     return name || undefined;
 }
 
+/** "git@github.com:org/Repo.git" → "https://github.com/org/Repo"; https fica sem ".git". */
+export function httpsUrlFromRemote(url: string): string | undefined {
+    const t = (url ?? '').trim();
+    if (!t) {
+        return undefined;
+    }
+    const ssh = t.match(/^(?:ssh:\/\/)?(?:git@)?([^:/]+)[:/](.+?)(?:\.git)?\/?$/);
+    if (/^https?:\/\//i.test(t)) {
+        return t.replace(/\.git$/i, '').replace(/\/+$/, '');
+    }
+    if (ssh) {
+        return `https://${ssh[1]}/${ssh[2]}`;
+    }
+    return undefined;
+}
+
 export async function detectWorkspaceHints(folderPath: string, deps: WorkspaceRepoDeps = defaultDeps()): Promise<WorkspaceHints> {
     const hints: WorkspaceHints = {folderName: path.basename(folderPath) || undefined};
     try {
         const {stdout} = await deps.execFile('git', ['config', '--get', 'remote.origin.url'], {cwd: folderPath});
         hints.remoteName = repoNameFromRemote(stdout);
+        hints.remoteUrl = httpsUrlFromRemote(stdout);
     } catch {
         // sem git ou sem remote: fica só o nome da pasta
     }

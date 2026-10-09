@@ -208,6 +208,7 @@ suite('QualityTreeProvider — seleção', () => {
         const root = await tree.getChildren();
         assert.ok(root[0].label.includes('"x"') && root[0].label.includes('não está cadastrado'));
         assert.ok(root.some((n) => n.command?.command === 'msgram.openSite'));
+        assert.ok(root.some((n) => n.command?.command === 'msgram.registerRepo'));
         assert.ok(root.some((n) => n.command?.command === 'msgram.openSettings'));
     });
 

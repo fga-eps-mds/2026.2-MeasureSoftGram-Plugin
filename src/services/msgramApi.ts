@@ -208,6 +208,53 @@ export async function discoverRepository(
   return fallback;
 }
 
+// ── Cadastro ──────────────────────────────────────────────────────────────────
+
+export interface ProductSummary {
+  id: number;
+  name: string;
+}
+
+export async function listProducts(settings: MsgramSettings, orgPk: number, log: Logger = noop): Promise<ProductSummary[]> {
+  const url = `${apiBase(settings)}/organizations/${orgPk}/products/`;
+  log(`[${ts()}] GET ${url}`);
+  const products = await getAll<ProductItem>(url, opts(settings));
+  return products.map((p) => ({id: p.id, name: p.name.trim()}));
+}
+
+export async function createProduct(
+    settings: MsgramSettings,
+    orgPk: number,
+    data: { name: string; description?: string },
+    log: Logger = noop,
+): Promise<ProductSummary> {
+  const url = `${apiBase(settings)}/organizations/${orgPk}/products/`;
+  log(`[${ts()}] POST ${url} (${data.name})`);
+  const res = await request<ProductItem>(url, {...opts(settings), method: 'POST', body: {name: data.name, description: data.description ?? ''}});
+  return {id: res.id, name: res.name.trim()};
+}
+
+/**
+ * Cria o repositório no produto. O Service dispara a primeira coleta em
+ * segundo plano (onboarding), então o score pode demorar alguns minutos.
+ */
+export async function createRepository(
+    settings: MsgramSettings,
+    orgPk: number,
+    productPk: number,
+    data: { name: string; url?: string; description?: string; platform?: 'github' | 'gitlab' | 'bitbucket' },
+    log: Logger = noop,
+): Promise<RepoItem> {
+  const url = `${apiBase(settings)}/organizations/${orgPk}/products/${productPk}/repositories/`;
+  log(`[${ts()}] POST ${url} (${data.name})`);
+  const res = await request<RepoItem>(url, {
+    ...opts(settings),
+    method: 'POST',
+    body: {name: data.name, url: data.url ?? '', description: data.description ?? '', platform: data.platform ?? 'github'},
+  });
+  return {id: res.id, name: res.name};
+}
+
 // ── Metas ─────────────────────────────────────────────────────────────────────
 
 /**

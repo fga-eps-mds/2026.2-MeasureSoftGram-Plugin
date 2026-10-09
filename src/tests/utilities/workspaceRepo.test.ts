@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import {detectWorkspaceHints, pickMatchingRepo, repoNameFromRemote} from '../../utilities/workspaceRepo';
+import {detectWorkspaceHints, httpsUrlFromRemote, pickMatchingRepo, repoNameFromRemote} from '../../utilities/workspaceRepo';
 
 suite('workspaceRepo — repoNameFromRemote', () => {
     test('extrai o nome de remotes ssh e https, com ou sem .git', () => {
@@ -7,6 +7,15 @@ suite('workspaceRepo — repoNameFromRemote', () => {
         assert.strictEqual(repoNameFromRemote('https://github.com/fga-eps-mds/MeasureSoftGram-Service.git\n'), 'MeasureSoftGram-Service');
         assert.strictEqual(repoNameFromRemote('https://github.com/org/Repo/'), 'Repo');
         assert.strictEqual(repoNameFromRemote(''), undefined);
+    });
+});
+
+suite('workspaceRepo — httpsUrlFromRemote', () => {
+    test('converte ssh e https para a URL https sem .git', () => {
+        assert.strictEqual(httpsUrlFromRemote('git@github.com:org/Repo.git'), 'https://github.com/org/Repo');
+        assert.strictEqual(httpsUrlFromRemote('https://github.com/org/Repo.git\n'), 'https://github.com/org/Repo');
+        assert.strictEqual(httpsUrlFromRemote('ssh://git@gitlab.com/g/p.git'), 'https://gitlab.com/g/p');
+        assert.strictEqual(httpsUrlFromRemote(''), undefined);
     });
 });
 
@@ -20,7 +29,7 @@ suite('workspaceRepo — detectWorkspaceHints', () => {
                 return {stdout: 'git@github.com:org/Plugin-Remote.git\n'};
             },
         });
-        assert.deepStrictEqual(hints, {folderName: '2026.1-MeasureSoftGram-Plugin', remoteName: 'Plugin-Remote'});
+        assert.deepStrictEqual(hints, {folderName: '2026.1-MeasureSoftGram-Plugin', remoteName: 'Plugin-Remote', remoteUrl: 'https://github.com/org/Plugin-Remote'});
     });
 
     test('sem git fica só com o nome da pasta', async () => {

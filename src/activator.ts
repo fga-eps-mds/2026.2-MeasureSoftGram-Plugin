@@ -34,6 +34,7 @@ export function activate<S, P = any>(
     Sidebar: { new(ctx: any, statusBar: any): S; viewType: string },
     StatusBar: { new(): { dispose: () => void } },
     makeTree?: (statusBar: any) => TreeLike,
+    registerRepo?: (afterSuccess: () => Promise<void>) => Promise<void>,
 ): { sidebar: S; tree?: TreeLike } {
     const statusBar = new StatusBar();
     context.subscriptions.push(statusBar);
@@ -66,6 +67,22 @@ export function activate<S, P = any>(
             webviewOptions: {retainContextWhenHidden: true},
         }),
     );
+
+    if (registerRepo) {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('msgram.registerRepo', () => registerRepo(async () => {
+                await tree?.refresh();
+                const s: any = sidebar;
+                if (s?.hasWebview) {
+                    await s.handleMessage({command: 'request_score'});
+                }
+                const panel: any = (Panel as any).currentPanel;
+                if (panel?.hasWebview) {
+                    await panel.handleMessage({command: 'request_score'});
+                }
+            })),
+        );
+    }
 
 
     context.subscriptions.push(

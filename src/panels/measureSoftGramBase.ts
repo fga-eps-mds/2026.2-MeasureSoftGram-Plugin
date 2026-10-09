@@ -460,6 +460,12 @@ export abstract class MeasureSoftGramBase {
                 return true;
             }
 
+            case 'register_repo': {
+                const {commands} = require('vscode');
+                await commands.executeCommand('msgram.registerRepo');
+                return true;
+            }
+
             case 'select_repo': {
                 if (!this._context) {
                     return true;
