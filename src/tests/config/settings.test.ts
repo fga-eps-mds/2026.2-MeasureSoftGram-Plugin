@@ -5,6 +5,7 @@ import {
     loadSettings,
     loadSettingsForUi,
     normalizeBaseUrl,
+    normalizeToken,
     saveSettings,
     SECRET_GITHUB_TOKEN,
     SECRET_MSGRAM_TOKEN,
@@ -176,6 +177,20 @@ suite('config/settings — saveSettings', () => {
         await saveSettings({...payload, msgramServiceToken: '', githubToken: undefined}, deps);
         assert.strictEqual(deps.secrets.store_[SECRET_MSGRAM_TOKEN], 'old');
         assert.strictEqual(deps.secrets.store_[SECRET_GITHUB_TOKEN], 'oldgh');
+    });
+
+    test('remove o prefixo "Token " que o site do MeasureSoftGram mostra', async () => {
+        const deps = makeDeps();
+        await saveSettings({...payload, msgramServiceToken: '  Token 6620fdcea5059  ', githubToken: 'Bearer ghp_x'}, deps);
+        assert.strictEqual(deps.secrets.store_[SECRET_MSGRAM_TOKEN], '6620fdcea5059');
+        assert.strictEqual(deps.secrets.store_[SECRET_GITHUB_TOKEN], 'ghp_x');
+    });
+
+    test('normalizeToken mantém tokens sem prefixo e trata vazio', () => {
+        assert.strictEqual(normalizeToken('abc'), 'abc');
+        assert.strictEqual(normalizeToken('token ABC'), 'ABC');
+        assert.strictEqual(normalizeToken('   '), '');
+        assert.strictEqual(normalizeToken(undefined), '');
     });
 
     test('nunca grava token na configuração', async () => {

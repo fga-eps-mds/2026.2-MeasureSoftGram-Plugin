@@ -93,6 +93,14 @@ export function normalizeBaseUrl(input: string): string {
   return url;
 }
 
+/**
+ * O site do MeasureSoftGram mostra a chave como "Token abc123…". A API só
+ * aceita o código, então o prefixo (e espaços) é removido ao salvar.
+ */
+export function normalizeToken(raw: string | undefined): string {
+  return (raw ?? '').trim().replace(/^(token|bearer)\s+/i, '').trim();
+}
+
 function clampTimeout(value: unknown): number {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : DEFAULT_TIMEOUT_MS;
   return Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS, Math.round(n)));
@@ -163,11 +171,13 @@ export async function saveSettings(payload: SettingsPayload, deps: SettingsDeps)
   }
 
   // Token vazio ou ausente significa "manter o que já existe".
-  if (payload.msgramServiceToken && payload.msgramServiceToken.trim()) {
-    await deps.secrets.store(SECRET_MSGRAM_TOKEN, payload.msgramServiceToken.trim());
+  const msgramToken = normalizeToken(payload.msgramServiceToken);
+  if (msgramToken) {
+    await deps.secrets.store(SECRET_MSGRAM_TOKEN, msgramToken);
   }
-  if (payload.githubToken && payload.githubToken.trim()) {
-    await deps.secrets.store(SECRET_GITHUB_TOKEN, payload.githubToken.trim());
+  const githubToken = normalizeToken(payload.githubToken);
+  if (githubToken) {
+    await deps.secrets.store(SECRET_GITHUB_TOKEN, githubToken);
   }
 }
 
