@@ -7,7 +7,7 @@
 import * as assert from 'assert';
 import * as http from 'node:http';
 import {AddressInfo} from 'node:net';
-import {fetchGoals, fetchRepositories, fetchScoreForRepo, MsgramSettings} from '../../services/msgramApi';
+import {discoverRepository, fetchGoals, fetchRepositories, fetchScoreForRepo, MsgramSettings} from '../../services/msgramApi';
 import {HttpError} from '../../services/httpClient';
 
 type Handler = (req: http.IncomingMessage, res: http.ServerResponse) => void;
@@ -16,6 +16,8 @@ interface Fixture {
   orgs?: { id: number; name: string }[];
   products?: { id: number; name: string }[];
   repos?: { id: number; name: string }[];
+  /** repositórios por produto (id) — para a descoberta; tem prioridade sobre `repos` */
+  reposByProduct?: Record<number, { id: number; name: string }[]>;
   /** página 1 devolve metade dos repos e aponta para a página 2 */
   paginateRepos?: boolean;
   paginateOrgs?: boolean;
@@ -73,6 +75,10 @@ function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promi
     }
 
     const mRepos = p.match(/^\/api\/v1\/organizations\/(\d+)\/products\/(\d+)\/repositories\/$/);
+    if (mRepos && fx.reposByProduct) {
+      const list = fx.reposByProduct[Number(mRepos[2])] ?? [];
+      return json(200, {count: list.length, next: null, previous: null, results: list});
+    }
     if (mRepos) {
       if (fx.paginateRepos && repos.length > 1) {
         const page = Number(url.searchParams.get('page') ?? '1');
@@ -299,6 +305,38 @@ suite('msgramApi contrato — fetchScoreForRepo', () => {
       );
     } finally {
       await new Promise<void>((r) => server.close(() => r()));
+    }
+  });
+});
+
+suite('msgramApi contrato — discoverRepository', () => {
+  test('acha o repositório da pasta aberta em outro produto, percorrendo organizações e produtos', async () => {
+    const srv = await startServer({
+      orgs: [{id: 1, name: 'EPS/MDS'}, {id: 2, name: 'Luiza Maluf'}],
+      products: [{id: 10, name: 'Measure'}, {id: 20, name: 'Integracao'}],
+      reposByProduct: {10: [{id: 100, name: 'Service'}], 20: [{id: 200, name: 'Integracao-de-Dados'}]},
+    });
+    try {
+      const found = await discoverRepository(settings(srv.baseUrl), {remoteName: 'Integracao-de-Dados'});
+      assert.ok(found);
+      assert.strictEqual(found!.repo.id, 200);
+      assert.strictEqual(found!.productName, 'Integracao');
+      assert.strictEqual(found!.orgPk, 1, 'primeira organização onde o produto existe');
+      assert.ok(srv.hits.some((h) => h.includes('/products/10/repositories/')), 'olhou o produto anterior antes');
+    } finally {
+      await srv.close();
+    }
+  });
+
+  test('devolve null quando nada casa, e null sem pistas (sem chamar a API)', async () => {
+    const srv = await startServer({reposByProduct: {3: [{id: 1, name: 'x'}]}});
+    try {
+      assert.strictEqual(await discoverRepository(settings(srv.baseUrl), {folderName: 'nada-a-ver'}), null);
+      const before = srv.hits.length;
+      assert.strictEqual(await discoverRepository(settings(srv.baseUrl), {}), null);
+      assert.strictEqual(srv.hits.length, before);
+    } finally {
+      await srv.close();
     }
   });
 });

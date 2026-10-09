@@ -9,6 +9,7 @@
 import {getAll, HttpError, request} from './httpClient';
 import {timestamp as ts} from '../utilities/log';
 import type {Characteristic, OrgItem, RepoItem, ScoreData} from '../panels/messages';
+import {pickMatchingRepo, WorkspaceHints} from '../utilities/workspaceRepo';
 
 export type {Characteristic, OrgItem, RepoItem, ScoreData};
 
@@ -140,6 +141,59 @@ export async function fetchRepositories(settings: MsgramSettings, log: Logger = 
     productName: product.name.trim(),
     repos,
   };
+}
+
+export interface DiscoveredRepo extends RepoContext {
+  repo: RepoItem;
+}
+
+/**
+ * Procura, em todas as organizações e produtos do token, um repositório que
+ * case com a pasta aberta (remote origin ou nome da pasta). Devolve o
+ * primeiro casamento exato; se não houver, o primeiro por sufixo.
+ * Usado quando o produto configurado não contém o repositório atual.
+ */
+export async function discoverRepository(
+    settings: Pick<MsgramSettings, 'serviceUrl' | 'token' | 'requestTimeoutMs'>,
+    hints: WorkspaceHints,
+    log: Logger = noop,
+): Promise<DiscoveredRepo | null> {
+  if (!hints.remoteName && !hints.folderName) {
+    return null;
+  }
+  const base = apiBase(settings as MsgramSettings);
+  const o = opts(settings as MsgramSettings);
+  const organizations = await getAll<OrgItem>(`${base}/organizations/`, o);
+  log(`[${ts()}] Procurando "${hints.remoteName ?? hints.folderName}" em ${organizations.length} organização(ões)…`);
+
+  let fallback: DiscoveredRepo | null = null;
+  const exactNames = [hints.remoteName, hints.folderName].filter((h): h is string => !!h).map((h) => norm(h));
+
+  for (const org of organizations) {
+    const products = await getAll<ProductItem>(`${base}/organizations/${org.id}/products/`, o);
+    for (const product of products) {
+      const repos = await getAll<RepoItem>(`${base}/organizations/${org.id}/products/${product.id}/repositories/`, o);
+      const match = pickMatchingRepo(repos, hints);
+      if (!match) {
+        continue;
+      }
+      const found: DiscoveredRepo = {
+        orgPk: org.id, orgName: org.name, organizations,
+        productPk: product.id, productName: product.name.trim(), repos, repo: match,
+      };
+      if (exactNames.includes(norm(match.name))) {
+        log(`[${ts()}] → Encontrado em "${org.name}" / "${product.name.trim()}": ${match.name}`);
+        return found;
+      }
+      fallback ??= found;
+    }
+  }
+  if (fallback) {
+    log(`[${ts()}] → Encontrado por sufixo em "${fallback.orgName}" / "${fallback.productName}": ${fallback.repo.name}`);
+  } else {
+    log(`[${ts()}] → Repositório da pasta aberta não está em nenhum produto desta conta.`);
+  }
+  return fallback;
 }
 
 // ── Metas ─────────────────────────────────────────────────────────────────────

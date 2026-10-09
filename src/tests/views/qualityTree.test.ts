@@ -46,7 +46,7 @@ const SCORE = {
 
 function makeTree(opts: {
     token?: string; productName?: string;
-    repos?: any; score?: any; hints?: any; dashboards?: any;
+    repos?: any; score?: any; hints?: any; dashboards?: any; discover?: any;
 } = {}) {
     const contextKeys: Record<string, unknown> = {};
     const statusBar = makeStatusBar();
@@ -55,6 +55,7 @@ function makeTree(opts: {
         fetchRepositories: opts.repos ?? (async () => CTX),
         fetchScoreForRepo: opts.score ?? (async () => SCORE),
         fetchDashboards: opts.dashboards ?? (async () => [{uid: 'u1', title: 'Visão Geral', description: '', tags: [], has_repo_selector: false}]),
+        discoverRepository: opts.discover ?? (async () => null),
         detectHints: opts.hints ?? (async () => ({})),
         statusBar: statusBar as any,
         setContext: async (k, v) => { contextKeys[k] = v; },
@@ -178,5 +179,31 @@ suite('QualityTreeProvider — seleção', () => {
         assert.strictEqual(chars.collapsibleState, 2, 'expandido');
         const actions = tree.getTreeItem(root.find((n) => n.kind === 'actions')!);
         assert.strictEqual(actions.collapsibleState, 1, 'recolhido');
+    });
+
+    test('pasta aberta em outro produto: descobre, persiste e mostra o produto novo', async () => {
+        const FOUND = {orgPk: 2, orgName: 'Luiza Maluf', organizations: CTX.organizations, productPk: 20, productName: 'Integracao', repos: [{id: 200, name: 'Integracao-de-Dados'}], repo: {id: 200, name: 'Integracao-de-Dados'}};
+        const {tree} = makeTree({token: 'tok', productName: 'Measure', hints: async () => ({remoteName: 'Integracao-de-Dados'}), discover: async () => FOUND});
+        await tree.refresh();
+        assert.strictEqual(tree.state, 'ready');
+        assert.strictEqual(tree.selectedRepo?.id, 200);
+        const root = await tree.getChildren();
+        assert.strictEqual(root[0].label, 'Integracao');
+        assert.strictEqual(root[0].description, 'Luiza Maluf');
+    });
+
+    test('sem produto configurado mas com pasta cadastrada: msgram.configured fica true e carrega', async () => {
+        const FOUND = {orgPk: 1, orgName: 'EPS/MDS', organizations: CTX.organizations, productPk: 10, productName: 'Measure', repos: REPOS, repo: REPOS[1]};
+        const {tree, contextKeys} = makeTree({token: 'tok', hints: async () => ({folderName: 'MeasureSoftGram-Plugin'}), discover: async () => FOUND});
+        await tree.refresh();
+        assert.strictEqual(tree.state, 'ready');
+        assert.strictEqual(contextKeys['msgram.configured'], true);
+    });
+
+    test('sem produto e pasta desconhecida: not_configured', async () => {
+        const {tree, contextKeys} = makeTree({token: 'tok', hints: async () => ({folderName: 'x'})});
+        await tree.refresh();
+        assert.strictEqual(tree.state, 'not_configured');
+        assert.strictEqual(contextKeys['msgram.configured'], false);
     });
 });
