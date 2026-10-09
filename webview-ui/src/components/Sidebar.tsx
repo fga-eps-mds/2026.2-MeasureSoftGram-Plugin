@@ -116,7 +116,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
             <div className="sblock">
                 <div className="sec-title">
-                    <i className="codicon codicon-star-full" aria-hidden="true"/> Nota do Produto
+                    <i className="codicon codicon-star-full" aria-hidden="true"/> TSQMI
                 </div>
 
                 <div className="score-box">

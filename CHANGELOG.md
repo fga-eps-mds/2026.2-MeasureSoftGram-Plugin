@@ -44,7 +44,7 @@ Correção de todos os itens do diagnóstico de 07/10/2026 (`diagnostico-2026-2.
 - Teste de integração em VS Code real (`npm run test:integration`): ativação, comandos, configuração e os fluxos de dados, settings e execução local.
 - Cobertura do `GrafanaView` de 2% para 100%.
 - `vscode:prepublish` gera a interface; `.vscodeignore` exclui `coverage/` de qualquer pasta; `npm run package` gera o `.vsix`.
-- Workflow `msg` usa `GITHUB_TOKEN`, fixa a Action em 2.1.5 e só roda após testes verdes. Workflow `package.yml` retomado: confere versão = tag, valida o pacote, anexa à release e publica no Marketplace com `VSCE_PAT`.
+- Workflow `msg` usa `GITHUB_TOKEN`, fixa a Action em 2.1.5 e só roda após testes verdes. Release pelo `release.yml` (Release Please, vindo do repositório 2026.2) com lint, testes e validação do conteúdo do pacote antes de anexar à release e publicar no Marketplace com `VSCE_PAT`.
 - `docs/SECRETS.md` lista os secrets que o CI precisa e quem os cria.
 - Workflow "Export de métricas" não faz mais push no repositório DOC (passo que falhava desde 14/09 por token inválido): os JSON do SonarCloud ficam como artefato do workflow em todo push e como asset da release nas tags. Os secrets `METRICAS_PLUGIN`, `USER_EMAIL` e `USER_NAME` deixam de ser necessários.
 - `parser.py` com timeout, `raise_for_status` e validação da resposta.

@@ -10,7 +10,7 @@
 &nbsp;
 [![Site Oficial](https://img.shields.io/badge/Site-MeasureSoftGram-green.svg)](https://msgram.lappis.rocks/)
 
-[Instalar Extensão](#instalação) · [Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Documentação](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin)
+[Instalar Extensão](#instalação) · [Site Oficial](https://fga-eps-mds.github.io/MeasureSoftGram-Docs/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Documentação](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin)
 
 </div>
 
@@ -125,10 +125,10 @@ npm run build:webview && npm run compile
 npm run package                       # gera measuresoftgram-<versão>.vsix
 ```
 
-O `.vsix` sai com a interface compilada e sem relatórios de cobertura. Para publicar:
+O `.vsix` sai com a interface compilada e sem relatórios de cobertura. A publicação é automática, pelo workflow **Release & Marketplace** com o [Release Please](https://github.com/googleapis/release-please):
 
-1. `npm version minor` (ou `patch`) atualiza o `package.json` e cria a tag `vX.Y.Z`.
-2. `git push --follow-tags` dispara o workflow **Package & Release Extension**, que confere que a versão bate com a tag, roda lint e testes, empacota, anexa o `.vsix` à release do GitHub e publica no Marketplace (se o secret `VSCE_PAT` existir).
+1. Commits convencionais (`feat:`, `fix:`, ...) chegam à `main`. O Release Please abre (ou atualiza) um PR de release com a nova versão e o `CHANGELOG.md`.
+2. Ao mesclar esse PR, o workflow cria a tag e a release no GitHub, roda lint e testes, empacota, confere o conteúdo do `.vsix`, anexa à release e publica no Marketplace (se o secret `VSCE_PAT` existir).
 
 Os secrets que o CI precisa estão descritos em [docs/SECRETS.md](docs/SECRETS.md).
 
@@ -142,6 +142,6 @@ Trata-se de um modelo hierárquico, multinível, multivariado e multidimensional
 
 <div align="center">
 
-[Site Oficial](https://msgram.lappis.rocks/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Docs](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin) · Licença AGPL v3
+[Site Oficial](https://fga-eps-mds.github.io/MeasureSoftGram-Docs/) · [Reportar Bug](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin/issues) · [Docs](https://github.com/fga-eps-mds/MeasureSoftGram-Plugin) · Licença AGPL v3
 
 </div>
