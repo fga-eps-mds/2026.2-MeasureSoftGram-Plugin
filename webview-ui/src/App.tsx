@@ -319,6 +319,7 @@ const App: React.FC = () => {
                         scoreData={scoreData}
                         scoreLoading={scoreLoading}
                         productName={settings.productName ?? ''}
+                        repoName={repos.find((r) => r.id === selectedRepoPk)?.name}
                         notifText={notifText}
                         notifType={notifType}
                         onRetry={handleRetry}
