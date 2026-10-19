@@ -37,8 +37,9 @@ def fetch_metrics(repo: str) -> dict:
     response.raise_for_status()
     data = response.json()
     # Sem este bloco a resposta é um erro do Sonar, não métricas.
-    if not isinstance(data, dict) or "component" not in data or "measures" not in data.get("component", {}):
-        raise ValueError(f"Resposta do SonarCloud sem 'component.measures': {json.dumps(data)[:300]}")
+    # O component_tree devolve o agregado em 'baseComponent', que é o que o DOC lê.
+    if not isinstance(data, dict) or "measures" not in data.get("baseComponent", {}):
+        raise ValueError(f"Resposta do SonarCloud sem 'baseComponent.measures': {json.dumps(data)[:300]}")
     return data
 
 
