@@ -1,19 +1,15 @@
-import {fireEvent, render, screen} from '@testing-library/react';
-import {describe, expect, it, vi} from 'vitest';
-import {DashboardView} from '../../components/DashboardView';
-import type {ScoreData} from '../../types';
-
-const NOW = new Date('2026-10-07T12:00:00Z');
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { DashboardView } from '../../components/DashboardView';
+import type { ScoreData } from '../../types';
 
 const mockScoreData: ScoreData = {
     score: 0.82,
     noData: false,
-    hasGoal: true,
-    lastAnalysisAt: '2026-10-05T12:00:00Z',
     characteristics: [
-        {key: 'maintainability', name: 'Maintainability', value: 0.85, goal: 0.80, measuredAt: '2026-10-05T12:00:00Z'},
-        {key: 'reliability', name: 'Reliability', value: 0.60, goal: 0.75, measuredAt: '2026-10-05T12:00:00Z'},
-        {key: 'performance', name: 'Performance', value: 0.90, goal: 0.70, measuredAt: '2026-10-05T12:00:00Z'},
+        { name: 'Maintainability', value: 0.85, goal: 0.80 },
+        { name: 'Reliability', value: 0.60, goal: 0.75 },
+        { name: 'Performance', value: 0.90, goal: 0.70 },
     ],
 };
 
@@ -21,9 +17,9 @@ const defaultProps = {
     scoreData: mockScoreData,
     scoreLoading: false,
     productName: 'My Product',
+    showCommitWarn: false,
     notifText: '',
     notifType: 'ok' as const,
-    now: NOW,
 };
 
 describe('DashboardView', () => {
@@ -39,47 +35,32 @@ describe('DashboardView', () => {
         });
 
         it('deve exibir "sem produto configurado" quando productName é vazio', () => {
-            render(<DashboardView {...defaultProps} productName=""/>);
+            render(<DashboardView {...defaultProps} productName="" />);
             expect(screen.getByText(/sem produto configurado/)).toBeInTheDocument();
-        });
-
-        it('deve exibir a última análise como tempo relativo a partir de lastAnalysisAt', () => {
-            render(<DashboardView {...defaultProps} />);
-            expect(screen.getByText(/última análise: há 2 dias/)).toBeInTheDocument();
-        });
-
-        it('deve mostrar a data absoluta no tooltip da última análise', () => {
-            render(<DashboardView {...defaultProps} />);
-            const el = screen.getByText(/há 2 dias/);
-            expect(el).toHaveAttribute('title', expect.stringMatching(/2026/));
-        });
-
-        it('deve exibir "nunca analisado" quando lastAnalysisAt é null', () => {
-            render(<DashboardView {...defaultProps} scoreData={{...mockScoreData, lastAnalysisAt: null}}/>);
-            expect(screen.getByText(/nunca analisado/)).toBeInTheDocument();
-        });
-
-        it('nunca exibe o texto fixo "agora mesmo"', () => {
-            const {container} = render(<DashboardView {...defaultProps} />);
-            expect(container.textContent).not.toMatch(/agora mesmo/);
         });
     });
 
     describe('loading state', () => {
         it('deve exibir spinner quando scoreLoading é true', () => {
-            render(<DashboardView {...defaultProps} scoreLoading={true}/>);
+            render(<DashboardView {...defaultProps} scoreLoading={true} />);
             expect(screen.getByText(/Carregando dados do produto/i)).toBeInTheDocument();
         });
 
+        it('não deve exibir spinner quando scoreLoading é false', () => {
+            render(<DashboardView {...defaultProps} scoreLoading={false} />);
+            expect(screen.queryByText(/Carregando dados do produto/i)).not.toBeInTheDocument();
+        });
+
         it('não deve exibir o score hero durante o loading', () => {
-            render(<DashboardView {...defaultProps} scoreLoading={true}/>);
+            render(<DashboardView {...defaultProps} scoreLoading={true} />);
             expect(screen.queryByText('0.82')).not.toBeInTheDocument();
         });
     });
 
     describe('no data warning', () => {
         it('deve exibir aviso quando scoreData.noData é true', () => {
-            render(<DashboardView {...defaultProps} scoreData={{...mockScoreData, noData: true}}/>);
+            const noDataScore = { ...mockScoreData, noData: true };
+            render(<DashboardView {...defaultProps} scoreData={noDataScore} />);
             expect(screen.getByText(/ainda não possui métricas calculadas/i)).toBeInTheDocument();
         });
 
@@ -89,87 +70,71 @@ describe('DashboardView', () => {
         });
     });
 
-    describe('aviso de característica abaixo da meta', () => {
-        it('deve exibir o aviso com a característica mais distante da meta', () => {
-            render(<DashboardView {...defaultProps} />);
-            const warn = document.getElementById('goal-warn');
-            expect(warn).toBeInTheDocument();
-            expect(warn).toHaveTextContent('Reliability');
+    describe('commit warning', () => {
+        it('não deve exibir aviso de commit quando a lista de características é vazia', () => {
+            const scoreData = { ...mockScoreData, characteristics: [] };
+            render(<DashboardView {...defaultProps} scoreData={scoreData} showCommitWarn={true} />);
+
+            expect(document.getElementById('commit-warn')).not.toBeInTheDocument();
         });
 
-        it('não deve mencionar commit', () => {
-            const {container} = render(<DashboardView {...defaultProps} />);
-            expect(container.textContent).not.toMatch(/commit/i);
-        });
-
-        it('não deve exibir quando todas estão acima da meta', () => {
-            const ok = {
+        it('deve exibir a única característica no aviso de commit', () => {
+            const scoreData = {
                 ...mockScoreData,
-                characteristics: mockScoreData.characteristics.map((c) => ({...c, value: 0.99})),
+                characteristics: [{ name: 'Reliability', value: 0.60, goal: 0.75 }],
             };
-            render(<DashboardView {...defaultProps} scoreData={ok}/>);
-            expect(document.getElementById('goal-warn')).not.toBeInTheDocument();
+            render(<DashboardView {...defaultProps} scoreData={scoreData} showCommitWarn={true} />);
+
+            expect(document.getElementById('commit-warn')).toHaveTextContent('Reliability');
         });
 
-        it('não deve exibir quando o produto não tem meta', () => {
-            const noGoal = {
+        it('deve escolher pela menor diferença para a meta entre várias características', () => {
+            const scoreData = {
                 ...mockScoreData,
-                hasGoal: false,
-                characteristics: mockScoreData.characteristics.map((c) => ({...c, goal: null})),
+                characteristics: [
+                    { name: 'Maintainability', value: 0.40, goal: 0.45 },
+                    { name: 'Reliability', value: 0.60, goal: 0.90 },
+                    { name: 'Performance', value: 0.80, goal: 0.70 },
+                ],
             };
-            render(<DashboardView {...defaultProps} scoreData={noGoal}/>);
-            expect(document.getElementById('goal-warn')).not.toBeInTheDocument();
+            render(<DashboardView {...defaultProps} scoreData={scoreData} showCommitWarn={true} />);
+
+            expect(document.getElementById('commit-warn')).toHaveTextContent('Reliability');
         });
 
-        it('não deve exibir quando scoreData é null', () => {
-            render(<DashboardView {...defaultProps} scoreData={null}/>);
-            expect(document.getElementById('goal-warn')).not.toBeInTheDocument();
+        it('deve exibir aviso de commit com a pior característica', () => {
+            render(<DashboardView {...defaultProps} showCommitWarn={true} />);
+
+            const commitWarn = document.getElementById('commit-warn');
+            expect(commitWarn).toBeInTheDocument();
+            expect(commitWarn).toHaveTextContent('Reliability');
+        });
+
+        it('não deve exibir aviso de commit quando showCommitWarn é false', () => {
+            render(<DashboardView {...defaultProps} showCommitWarn={false} />);
+            expect(screen.queryByText(/Atenção antes do commit/i)).not.toBeInTheDocument();
+        });
+
+        it('não deve exibir aviso de commit quando scoreData é null', () => {
+            render(<DashboardView {...defaultProps} scoreData={null} showCommitWarn={true} />);
+            expect(screen.queryByText(/Atenção antes do commit/i)).not.toBeInTheDocument();
         });
     });
 
-    describe('meta', () => {
-        it('deve exibir "sem meta definida" quando hasGoal é false', () => {
-            const noGoal = {
-                ...mockScoreData,
-                hasGoal: false,
-                characteristics: mockScoreData.characteristics.map((c) => ({...c, goal: null})),
-            };
-            render(<DashboardView {...defaultProps} scoreData={noGoal}/>);
-            expect(screen.getByText(/sem meta definida/i)).toBeInTheDocument();
-        });
-
-        it('deve exibir "acima ✓" quando score >= meta média', () => {
-            render(<DashboardView {...defaultProps} />);
-            expect(screen.getByText(/acima ✓/i)).toBeInTheDocument();
-        });
-
-        it('deve exibir "abaixo ✗" quando score < meta média', () => {
-            render(<DashboardView {...defaultProps} scoreData={{...mockScoreData, score: 0.5}}/>);
-            expect(screen.getByText(/abaixo ✗/i)).toBeInTheDocument();
-        });
-    });
-
-    describe('notificação e erro', () => {
+    describe('notificação', () => {
         it('deve exibir notificação de sucesso quando notifText está presente', () => {
-            render(<DashboardView {...defaultProps} notifText="Análise concluída!" notifType="ok"/>);
+            render(<DashboardView {...defaultProps} notifText="Análise concluída!" notifType="ok" />);
             expect(screen.getByText('Análise concluída!')).toBeInTheDocument();
         });
 
         it('deve exibir notificação de erro quando notifType é error', () => {
-            render(<DashboardView {...defaultProps} notifText="Falha na análise" notifType="error"/>);
+            render(<DashboardView {...defaultProps} notifText="Falha na análise" notifType="error" />);
             expect(screen.getByText('Falha na análise')).toBeInTheDocument();
         });
 
-        it('deve exibir "Tentar de novo" em erro e chamar onRetry', () => {
-            const onRetry = vi.fn();
-            render(<DashboardView {...defaultProps} scoreData={null} notifText="Serviço indisponível" notifType="error" onRetry={onRetry}/>);
-            fireEvent.click(screen.getByRole('button', {name: /tentar de novo/i}));
-            expect(onRetry).toHaveBeenCalledTimes(1);
-        });
-
-        it('não deve exibir "Tentar de novo" quando não há erro', () => {
-            render(<DashboardView {...defaultProps} onRetry={() => {}}/>);
-            expect(screen.queryByRole('button', {name: /tentar de novo/i})).not.toBeInTheDocument();
+        it('não deve exibir notificação quando notifText é vazio', () => {
+            render(<DashboardView {...defaultProps} notifText="" />);
+            expect(screen.queryByRole('status')).not.toBeInTheDocument();
         });
     });
 
@@ -180,40 +145,49 @@ describe('DashboardView', () => {
         });
 
         it('deve exibir "—" quando scoreData é null', () => {
-            render(<DashboardView {...defaultProps} scoreData={null}/>);
-            expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+            render(<DashboardView {...defaultProps} scoreData={null} />);
+            expect(screen.getByText('—')).toBeInTheDocument();
+        });
+
+        it('deve exibir status "acima" quando score >= avgGoal', () => {
+            render(<DashboardView {...defaultProps} />);
+            expect(screen.getByText(/acima ✓/i)).toBeInTheDocument();
+        });
+
+        it('deve exibir status "abaixo" quando score < avgGoal', () => {
+            const lowScore = { ...mockScoreData, score: 0.50 };
+            render(<DashboardView {...defaultProps} scoreData={lowScore} />);
+            expect(screen.getByText(/abaixo ✗/i)).toBeInTheDocument();
+        });
+
+        it('deve exibir "—" como metaStatus quando scoreData é null', () => {
+            render(<DashboardView {...defaultProps} scoreData={null} />);
+            expect(screen.getByText('—')).toBeInTheDocument();
         });
     });
 
     describe('lista de características', () => {
-        it('deve renderizar todas as características na lista', () => {
+        it('deve renderizar todas as características', () => {
             render(<DashboardView {...defaultProps} />);
-            const list = document.getElementById('chars-dashboard')!;
-            const names = Array.from(list.querySelectorAll('.char-name')).map((e) => e.textContent);
-            expect(names).toEqual(['Maintainability', 'Reliability', 'Performance']);
+            expect(screen.getByText('Maintainability')).toBeInTheDocument();
+            expect(screen.getByText('Reliability')).toBeInTheDocument();
+            expect(screen.getByText('Performance')).toBeInTheDocument();
         });
 
         it('deve exibir certo para características acima da meta', () => {
             render(<DashboardView {...defaultProps} />);
-            expect(screen.getAllByText(/meta.*✓/)).toHaveLength(2);
+            const checks = screen.getAllByText(/meta.*✓/);
+            expect(checks).toHaveLength(2);
         });
 
-        it('deve exibir til para características abaixo da meta', () => {
+        it('deve exibir errado para características abaixo da meta', () => {
             render(<DashboardView {...defaultProps} />);
-            expect(screen.getAllByText(/meta.*~/)).toHaveLength(1);
-        });
-
-        it('deve exibir "meta —" para característica sem meta', () => {
-            const partial = {
-                ...mockScoreData,
-                characteristics: [{...mockScoreData.characteristics[0], goal: null}],
-            };
-            render(<DashboardView {...defaultProps} scoreData={partial}/>);
-            expect(screen.getByText(/meta —/)).toBeInTheDocument();
+            const tildes = screen.getAllByText(/meta.*~/);
+            expect(tildes).toHaveLength(1);
         });
 
         it('não deve renderizar características quando scoreData é null', () => {
-            render(<DashboardView {...defaultProps} scoreData={null}/>);
+            render(<DashboardView {...defaultProps} scoreData={null} />);
             expect(screen.queryByText('Maintainability')).not.toBeInTheDocument();
         });
     });

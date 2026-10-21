@@ -1,12 +1,3 @@
-# Executor local da MeasureSoftGram Action (act dentro de Docker).
-#
-# A extensão invoca:
-#   docker compose run --rm --build act-runner workflow_dispatch \
-#     -W /workspace/.github/workflows/msgram.yml -s GITHUB_TOKEN -s MSGRAM_TOKEN
-#
-# Os tokens chegam pelo ambiente do processo (GITHUB_TOKEN, MSGRAM_TOKEN) e
-# `-s NOME` sem valor faz o act lê-los da env do contêiner. Nada vai para
-# disco e a extensão mascara os valores na saída.
 services:
   act-runner:
     build:
@@ -17,6 +8,4 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
       - ${WORKSPACE_PATH}:/workspace
     working_dir: /workspace
-    environment:
-      - GITHUB_TOKEN
-      - MSGRAM_TOKEN
+    command: ["-W", "/workspace/${WORKFLOW_REL_PATH}"]

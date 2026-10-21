@@ -31,7 +31,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
       <div className="view-header">
         <div>
           <div className="view-title">
-            <i className="codicon codicon-graph-line" aria-hidden="true" />
+            <i className="ti ti-chart-area" style={{ color: '#2B4D6F', fontSize: 16 }} />
             <span>Grafana Dashboards</span>
           </div>
           <div className="view-sub">
@@ -44,28 +44,28 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
         </div>
         {showFrame && (
           <button className="btn sec" onClick={onBack}>
-            <i className="codicon codicon-arrow-left" /> Voltar
+            <i className="ti ti-arrow-left" /> Voltar
           </button>
         )}
       </div>
 
       {loading && (
         <div className="notif" style={{ marginBottom: 14 }}>
-          <i className="codicon codicon-loading codicon-modifier-spin run-anim" />
+          <i className="ti ti-loader run-anim" />
           <span>Carregando...</span>
         </div>
       )}
 
       {error && (
         <div className="notif warn-n" style={{ marginBottom: 12 }}>
-          <i className="codicon codicon-warning" aria-hidden="true" />
+          <i className="ti ti-alert-circle" style={{ color: '#D13310' }} />
           <span>{error}</span>
         </div>
       )}
 
       {!hasContext && !loading && (
         <div className="notif warn-n">
-          <i className="codicon codicon-info" />
+          <i className="ti ti-info-circle" />
           <span>
             Nenhum produto carregado. Abra a aba <strong>Painel</strong> e aguarde o
             carregamento das métricas antes de acessar os dashboards.
@@ -75,7 +75,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
 
       {showList && hasContext && dashboards.length === 0 && !error && (
         <div className="notif">
-          <i className="codicon codicon-info" />
+          <i className="ti ti-info-circle" />
           <span>Nenhum dashboard encontrado no Grafana.</span>
         </div>
       )}
@@ -90,20 +90,20 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
               onClick={() => onSelectDashboard(d.uid)}
             >
               <i
-                className="codicon codicon-graph grafana-card-icon"
+                className="ti ti-chart-bar grafana-card-icon"
                 aria-hidden="true"
               />
               <span className="grafana-card-info">
                 <span className="grafana-card-title">{d.title}</span>
                 {d.has_repo_selector && (
                   <span className="grafana-card-sub">
-                    <i className="codicon codicon-repo" aria-hidden="true" />
+                    <i className="ti ti-git-branch" aria-hidden="true" />
                     {' '}filtrado por repositório
                   </span>
                 )}
               </span>
               <i
-                className="codicon codicon-chevron-right grafana-card-arrow"
+                className="ti ti-chevron-right grafana-card-arrow"
                 aria-hidden="true"
               />
             </button>
@@ -116,10 +116,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
           src={iframeUrl!}
           className="grafana-iframe"
           title={iframeTitle ?? 'Grafana Dashboard'}
-          // allow-same-origin: o Grafana precisa da própria sessão; allow-popups: "abrir no navegador".
-          // Sem allow-top-navigation nem allow-forms: o dashboard não sai do iframe.
-          sandbox="allow-scripts allow-same-origin allow-popups"
-          referrerPolicy="no-referrer"
+          frameBorder="0"
           allowFullScreen
         />
       )}

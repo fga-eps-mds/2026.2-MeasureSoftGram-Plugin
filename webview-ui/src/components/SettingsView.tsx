@@ -1,236 +1,173 @@
-import React, {useState} from 'react';
-import type {SecretKey, SettingsForUi, SettingsPayload} from '../types';
+import React, {useEffect, useState} from 'react';
+import type {SettingsData} from '../types';
 import {getVSCodeAPI} from '../utils/vscode';
 
 interface SettingsViewProps {
-    /** Vem de settings_loaded. O componente deve ser remontado (key) quando mudar. */
-    initialData?: Partial<SettingsForUi>;
-    onSave: (data: SettingsPayload) => void;
-    onClearSecret: (key: SecretKey) => void;
+    initialData?: Partial<SettingsData>;
+    onSave: (data: SettingsData) => void;
     savedFeedback: boolean;
 }
 
-export const DEFAULT_SERVICE_URL = 'https://msgram.lappis.rocks';
+type DraftState = { settingsDraft?: Partial<SettingsData> };
 
-/** Rascunho dos campos não sensíveis. Tokens nunca entram aqui. */
-type Draft = Partial<Pick<SettingsForUi,
-    'serviceUrl' | 'productName' | 'organizationName' | 'sonarProjectKey' | 'workflowName'>>;
-
-type DraftState = { settingsDraft?: Draft };
-
-interface Form {
-    serviceUrl: string;
-    productName: string;
-    organizationName: string;
-    sonarProjectKey: string;
-    workflowName: string;
-    msgramServiceToken: string;
-    githubToken: string;
-}
-
-function readDraft(): Draft {
+function readDraft(): Partial<SettingsData> {
     const state = getVSCodeAPI().getState() as DraftState | undefined;
     return state?.settingsDraft ?? {};
 }
 
-function writeDraft(draft: Draft) {
+function writeDraft(draft: Partial<SettingsData>) {
     const current = (getVSCodeAPI().getState() as Record<string, unknown> | undefined) ?? {};
     getVSCodeAPI().setState({...current, settingsDraft: draft});
-}
-
-function initialForm(initialData: Partial<SettingsForUi>): Form {
-    const d = readDraft();
-    return {
-        serviceUrl: d.serviceUrl ?? initialData.serviceUrl ?? DEFAULT_SERVICE_URL,
-        productName: d.productName ?? initialData.productName ?? '',
-        organizationName: d.organizationName ?? initialData.organizationName ?? '',
-        sonarProjectKey: d.sonarProjectKey ?? initialData.sonarProjectKey ?? '',
-        workflowName: d.workflowName ?? initialData.workflowName ?? 'Build',
-        msgramServiceToken: '',
-        githubToken: '',
-    };
-}
-
-function draftOf(form: Form): Draft {
-    const {serviceUrl, productName, organizationName, sonarProjectKey, workflowName} = form;
-    return {serviceUrl, productName, organizationName, sonarProjectKey, workflowName};
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
                                                               initialData = {},
                                                               onSave,
-                                                              onClearSecret,
                                                               savedFeedback,
                                                           }) => {
-    // Estado único, inicializado uma vez. O pai remonta o componente (key)
-    // quando settings_loaded chega, então não há setState em efeito.
-    const [form, setForm] = useState<Form>(() => initialForm(initialData));
+    const draft = readDraft();
 
-    const hasMsgramToken = !!initialData.hasMsgramToken;
-    const hasGithubToken = !!initialData.hasGithubToken;
+    const [serviceUrl, setServiceUrl] = useState(draft.serviceUrl || initialData.serviceUrl || 'https://msgram-api.synaptha.com/');
+    const [msgramServiceToken, setMsgramServiceToken] = useState(draft.msgramServiceToken || initialData.msgramServiceToken || '');
+    const [githubToken, setGithubToken] = useState(draft.githubToken || initialData.githubToken || '');
+    const [sonarProjectKey, setSonarProjectKey] = useState(draft.sonarProjectKey || initialData.sonarProjectKey || '');
+    const [productName, setProductName] = useState(draft.productName || initialData.productName || 'measuresoftgram 2026');
+    const [workflowName, setWorkflowName] = useState(draft.workflowName || initialData.workflowName || 'Build');
 
-    function change<K extends keyof Form>(field: K, value: Form[K]) {
-        const next = {...form, [field]: value};
-        setForm(next);
-        writeDraft(draftOf(next));
+    // Sync when extension sends settings_loaded with persisted values
+    useEffect(() => {
+        if (!initialData || Object.keys(initialData).length === 0) {
+            return;
+        }
+        const d = readDraft();
+        setServiceUrl(d.serviceUrl || initialData.serviceUrl || 'https://msgram-api.synaptha.com/');
+        setMsgramServiceToken(d.msgramServiceToken || initialData.msgramServiceToken || '');
+        setGithubToken(d.githubToken || initialData.githubToken || '');
+        setSonarProjectKey(d.sonarProjectKey || initialData.sonarProjectKey || '');
+        setProductName(d.productName || initialData.productName || 'measuresoftgram 2026');
+        setWorkflowName(d.workflowName || initialData.workflowName || 'Build');
+    }, [initialData]);
+
+    function change(field: keyof SettingsData, value: string, setter: (v: string) => void) {
+        setter(value);
+        const current: Partial<SettingsData> = {
+            serviceUrl, msgramServiceToken, githubToken,
+            sonarProjectKey, productName, workflowName,
+            [field]: value,
+        };
+        writeDraft(current);
     }
 
     const handleSave = () => {
-        const payload: SettingsPayload = {
-            serviceUrl: form.serviceUrl,
-            productName: form.productName,
-            organizationName: form.organizationName,
-            sonarProjectKey: form.sonarProjectKey,
-            workflowName: form.workflowName,
-            requestTimeoutMs: initialData.requestTimeoutMs ?? 15000,
-            grafanaAllowedHosts: initialData.grafanaAllowedHosts ?? [],
+        const data: SettingsData = {
+            serviceUrl, msgramServiceToken, githubToken,
+            sonarProjectKey, productName, workflowName,
         };
-        if (form.msgramServiceToken.trim()) {
-            payload.msgramServiceToken = form.msgramServiceToken.trim();
-        }
-        if (form.githubToken.trim()) {
-            payload.githubToken = form.githubToken.trim();
-        }
-        writeDraft(draftOf(form));
-        onSave(payload);
-        setForm({...form, msgramServiceToken: '', githubToken: ''});
+        writeDraft(data);
+        onSave(data);
     };
-
-    const tokenStatus = (saved: boolean, testId: string, key: SecretKey, clearTestId: string) => (
-        <div className="fd token-status" data-testid={testId}>
-            {saved ? (
-                <>
-                    <i className="codicon codicon-lock" aria-hidden="true"/> salvo ✓ no Secret Storage.
-                    Digite um novo valor para substituir, ou{' '}
-                    <button
-                        type="button"
-                        className="link-btn"
-                        data-testid={clearTestId}
-                        onClick={() => onClearSecret(key)}
-                    >
-                        remover
-                    </button>.
-                </>
-            ) : (
-                <>
-                    <i className="codicon codicon-unlock" aria-hidden="true"/> não configurado.
-                </>
-            )}
-        </div>
-    );
 
     return (
         <div className="vw" id="view-settings">
             <div className="sf">
                 <div className="notif" style={{marginBottom: 14}}>
-                    <i className="codicon codicon-info" aria-hidden="true"/>
+                    <i className="ti ti-info-circle"/>
                     <span>
-                        Tokens ficam no Secret Storage do VS Code. Os demais campos ficam em{' '}
-                        <code>settings.json</code> do workspace (prefixo <code>msgram.</code>).
-                    </span>
+            Configurações salvas no workspace. Tokens armazenados no Secret Storage do VSCode.
+          </span>
                 </div>
 
                 <div className="fg">
                     <label className="fl" htmlFor="inp-serviceurl">MSGRAM Service URL</label>
-                    <div className="fd">URL base do serviço MeasureSoftGram</div>
+                    <div className="fd">URL base da API MSGRAM (ex: https://api.msgram.io)</div>
                     <input
                         className="fi"
                         type="text"
                         id="inp-serviceurl"
-                        placeholder={DEFAULT_SERVICE_URL}
-                        value={form.serviceUrl}
-                        onChange={(e) => change('serviceUrl', e.target.value)}
+                        placeholder="https://api.msgram.io"
+                        value={serviceUrl}
+                        onChange={(e) => change('serviceUrl', e.target.value, setServiceUrl)}
                     />
                 </div>
 
                 <div className="fg">
                     <label className="fl" htmlFor="inp-msgram-token">MSGRAM Service Token</label>
-                    {tokenStatus(hasMsgramToken, 'msgram-token-status', 'msgram.token', 'clear-msgram-token')}
+                    <div className="fd">Token de autenticação da API MSGRAM (msgramServiceToken)</div>
                     <input
                         className="fi"
                         type="password"
                         id="inp-msgram-token"
-                        autoComplete="off"
-                        placeholder={hasMsgramToken ? '•••••••• (salvo)' : 'cole o token da sua conta'}
-                        value={form.msgramServiceToken}
-                        onChange={(e) => change('msgramServiceToken', e.target.value)}
+                        placeholder="••••••••••••••••"
+                        value={msgramServiceToken}
+                        onChange={(e) => change('msgramServiceToken', e.target.value, setMsgramServiceToken)}
                     />
                 </div>
 
                 <div className="fg">
                     <label className="fl" htmlFor="inp-github-token">GitHub Token</label>
-                    {tokenStatus(hasGithubToken, 'github-token-status', 'msgram.githubToken', 'clear-github-token')}
+                    <div className="fd">Token usado pela action para acessar a API do GitHub (githubToken)</div>
                     <input
                         className="fi"
                         type="password"
                         id="inp-github-token"
-                        autoComplete="off"
-                        placeholder={hasGithubToken ? '•••••••• (salvo)' : 'ghp_… (usado pela Action local)'}
-                        value={form.githubToken}
-                        onChange={(e) => change('githubToken', e.target.value)}
+                        placeholder="ghp_••••••••••••••••"
+                        value={githubToken}
+                        onChange={(e) => change('githubToken', e.target.value, setGithubToken)}
                     />
                 </div>
 
                 <div className="fg">
-                    <label className="fl" htmlFor="inp-product">Product Name</label>
-                    <div className="fd">Nome do produto cadastrado no MeasureSoftGram</div>
-                    <input
-                        className="fi"
-                        type="text"
-                        id="inp-product"
-                        placeholder="nome exato do produto"
-                        value={form.productName}
-                        onChange={(e) => change('productName', e.target.value)}
-                    />
-                </div>
-
-                <div className="fg">
-                    <label className="fl" htmlFor="inp-org">Organization (opcional)</label>
-                    <div className="fd">Só é necessário quando sua conta tem mais de uma organização</div>
-                    <input
-                        className="fi"
-                        type="text"
-                        id="inp-org"
-                        placeholder="vazio = primeira organização"
-                        value={form.organizationName}
-                        onChange={(e) => change('organizationName', e.target.value)}
-                    />
-                </div>
-
-                <div className="fg">
-                    <label className="fl" htmlFor="inp-sonar-key">Sonar Project Key (opcional)</label>
-                    <div className="fd">Chave do projeto no SonarCloud, usada pela Action</div>
+                    <label className="fl" htmlFor="inp-sonar-key">Sonar Project Key</label>
+                    <div className="fd">
+                        Chave do projeto no SonarQube (opcional, necessária se "Collect Sonarqube Metrics" estiver
+                        ativo)
+                    </div>
                     <input
                         className="fi"
                         type="text"
                         id="inp-sonar-key"
                         placeholder="meu-projeto-sonar"
-                        value={form.sonarProjectKey}
-                        onChange={(e) => change('sonarProjectKey', e.target.value)}
+                        value={sonarProjectKey}
+                        onChange={(e) => change('sonarProjectKey', e.target.value, setSonarProjectKey)}
+                    />
+                </div>
+
+                <div className="fg">
+                    <label className="fl" htmlFor="inp-product">Product Name</label>
+                    <div className="fd">Nome do produto cadastrado no MSGRAM 1 (productName)</div>
+                    <input
+                        className="fi"
+                        type="text"
+                        id="inp-product"
+                        placeholder="measuresoftgram 2026"
+                        value={productName}
+                        onChange={(e) => change('productName', e.target.value, setProductName)}
                     />
                 </div>
 
                 <div className="fg">
                     <label className="fl" htmlFor="inp-workflowname">Workflow Name</label>
-                    <div className="fd">Nome do workflow de build que a Action observa (<code>on: workflow_run</code>)</div>
+                    <div className="fd">
+                        Nome do workflow que realiza a build da release (workflowName), usado no "on: workflow_run"
+                    </div>
                     <input
                         className="fi"
                         type="text"
                         id="inp-workflowname"
                         placeholder="Build"
-                        value={form.workflowName}
-                        onChange={(e) => change('workflowName', e.target.value)}
+                        value={workflowName}
+                        onChange={(e) => change('workflowName', e.target.value, setWorkflowName)}
                     />
                 </div>
 
                 <div className="fsave">
-                    <button className="btn" type="button" onClick={handleSave}>
-                        <i className="codicon codicon-save" aria-hidden="true"/> Salvar
+                    <button className="btn" onClick={handleSave}>
+                        <i className="ti ti-device-floppy"/> Salvar e validar conexão
                     </button>
                     {savedFeedback && (
                         <span id="save-fb" className="feedback-ok">
-                            <i className="codicon codicon-check" aria-hidden="true"/> Configurações salvas
-                        </span>
+              <i className="ti ti-check"/> Conexão validada
+            </span>
                     )}
                 </div>
             </div>
