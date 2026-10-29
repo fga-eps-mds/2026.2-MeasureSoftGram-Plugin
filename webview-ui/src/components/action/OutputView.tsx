@@ -1,6 +1,5 @@
 import React, {useEffect, useRef} from 'react';
 import type {LogLine} from '../../types';
-import {escHtml} from '../../utils/helpers.ts';
 
 interface OutputViewProps {
     lines: LogLine[];
@@ -26,10 +25,7 @@ export const OutputView: React.FC<OutputViewProps> = ({lines}) => {
                     lines.map((line, i) => (
                         <div key={i} className="ll">
                             <span className="lt">{line.time}</span>
-                            <span
-                                className={line.isError ? 'lerr' : 'lok'}
-                                dangerouslySetInnerHTML={{__html: escHtml(line.text)}}
-                            />
+                            <span className={line.isError ? 'lerr' : 'lok'}>{line.text}</span>
                         </div>
                     ))
                 )}

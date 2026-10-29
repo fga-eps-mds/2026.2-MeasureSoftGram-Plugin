@@ -85,6 +85,11 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const handler = (event: MessageEvent<ExtensionMessage>) => {
+            // A extensão entrega as mensagens pela mesma origem da webview; qualquer outra
+            // (um iframe embutido, por exemplo) não pode disparar comandos aqui.
+            if (event.origin !== window.location.origin) {
+                return;
+            }
             const msg = event.data;
             switch (msg.command) {
 
