@@ -2,11 +2,6 @@ import {render, screen} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
 import {OutputView} from '../../../components/action/OutputView';
 import type {LogLine} from '../../../types';
-import * as helpers from '../../../utils/helpers.ts';
-
-vi.mock('../../../utils/helpers.ts', () => ({
-    escHtml: vi.fn((text: string) => text),
-}));
 
 const makeLines = (overrides: Partial<LogLine>[] = []): LogLine[] =>
     overrides.map((o, i) => ({
@@ -68,17 +63,12 @@ describe('OutputView', () => {
         expect(span).not.toHaveClass('lerr');
     });
 
-    it('deve chamar escHtml com o texto de cada linha', () => {
-        const lines = makeLines([{text: '<script>xss</script>'}]);
+    it('deve exibir HTML do log como texto, sem interpretá-lo', () => {
+        const lines = makeLines([{text: '<img src=x onerror="alert(1)"><script>xss</script>'}]);
         render(<OutputView lines={lines}/>);
-        expect(helpers.escHtml).toHaveBeenCalledWith('<script>xss</script>');
-    });
-
-    it('deve renderizar o conteúdo via dangerouslySetInnerHTML', () => {
-        const lines = makeLines([{text: 'texto simples'}]);
-        render(<OutputView lines={lines}/>);
-        const span = screen.getByText('texto simples');
-        expect(span.innerHTML).toBe('texto simples');
+        const span = screen.getByText('<img src=x onerror="alert(1)"><script>xss</script>');
+        expect(span.querySelector('img, script')).toBeNull();
+        expect(document.querySelector('#output-log script, #output-log img')).toBeNull();
     });
 
     it('deve fazer scroll para o final ao receber novas linhas', () => {
