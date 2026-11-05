@@ -130,8 +130,8 @@ vi.mock('../utils/validation', () => ({
 
 const {default: App} = await import('../App');
 
-function sendMessage(data: unknown) {
-    window.dispatchEvent(new MessageEvent('message', {data}));
+function sendMessage(data: unknown, origin = window.location.origin) {
+    window.dispatchEvent(new MessageEvent('message', {data, origin}));
 }
 
 describe('App', () => {
@@ -319,6 +319,13 @@ describe('App', () => {
             expect(screen.getByTestId('not-configured')).toBeInTheDocument();
             expect(screen.getByTestId('not-configured').getAttribute('data-missing')).toBe('token');
             expect(screen.queryByTestId('dashboard-view')).not.toBeInTheDocument();
+        });
+
+        it('ignora mensagens de outra origem', () => {
+            render(<App/>);
+            act(() => sendMessage({command: 'not_configured', missing: ['token']}, 'https://evil.example'));
+            expect(screen.queryByTestId('not-configured')).not.toBeInTheDocument();
+            expect(screen.getByTestId('dashboard-view')).toBeInTheDocument();
         });
 
         it('"Abrir Settings" na NotConfiguredView leva para a aba settings', () => {
