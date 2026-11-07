@@ -1,4 +1,5 @@
 import React, {useEffect, useRef} from 'react';
+import DOMPurify from 'dompurify';
 import type {LogLine} from '../../types';
 import {escHtml} from '../../utils/helpers.ts';
 
@@ -28,7 +29,7 @@ export const OutputView: React.FC<OutputViewProps> = ({lines}) => {
                             <span className="lt">{line.time}</span>
                             <span
                                 className={line.isError ? 'lerr' : 'lok'}
-                                dangerouslySetInnerHTML={{__html: escHtml(line.text)}}
+                                dangerouslySetInnerHTML={{__html: DOMPurify.sanitize(escHtml(line.text))}}
                             />
                         </div>
                     ))
