@@ -40,6 +40,9 @@ lerna-debug.log*
 
 # Coverage reports
 coverage/
+mocha-result.json
+test-report.xml
+webview-ui/vitest-result.json
 # VS Code baixado pelo @vscode/test-electron
 .vscode-test/
 

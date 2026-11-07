@@ -85,6 +85,9 @@ const App: React.FC = () => {
 
     useEffect(() => {
         const handler = (event: MessageEvent<ExtensionMessage>) => {
+            if (event.origin && !event.origin.startsWith('vscode-webview://') && event.origin !== 'null' && event.origin !== window.location.origin) {
+                return;
+            }
             const msg = event.data;
             switch (msg.command) {
 

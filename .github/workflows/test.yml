@@ -45,11 +45,16 @@ jobs:
         run: npm run build:webview
 
       - name: Testes da extensão com cobertura
-        run: npm run test:coverage
+        run: |
+          npm run test:coverage
+          npm run test:unit -- --reporter json --reporter-option output=mocha-result.json
 
       - name: Testes da interface com cobertura
-        run: npm run test:coverage
+        run: npm run test:coverage -- --reporter=default --reporter=json --outputFile=vitest-result.json
         working-directory: webview-ui
+
+      - name: Gerar relatório de testes para o SonarCloud
+        run: node scripts/generate-sonar-report.mjs
 
       - name: Teste de integração em VS Code real
         run: xvfb-run -a npm run test:integration
