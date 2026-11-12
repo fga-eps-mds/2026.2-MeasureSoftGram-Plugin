@@ -1,8 +1,8 @@
 /**
  * Contrato de mensagens entre a extensão e a interface (webview).
  *
- * Espelhado em `webview-ui/src/types/index.ts`. Qualquer mudança aqui
- * precisa ser refletida lá e em `specs/.../contracts/webview-messages.md`.
+ * Fonte única: a webview reexporta estes tipos em `webview-ui/src/types/index.ts`.
+ * Qualquer mudança aqui precisa ser refletida em `specs/.../contracts/webview-messages.md`.
  */
 
 // ── Dados compartilhados ───────────────────────────────────────────────────
