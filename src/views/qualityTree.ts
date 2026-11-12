@@ -167,21 +167,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             });
 
             if (result.kind === 'missingProduct') {
-                this._context = null;
-                this._selectedRepo = null;
-                this._score = null;
-                this._unregisteredRepo = hints.remoteName ?? hints.folderName ?? null;
-                if (this._unregisteredRepo) {
-                    // Há token e pasta aberta, mas o repositório não está em nenhum produto: mostra na árvore.
-                    await this._setContext('msgram.configured', true);
-                    this._state = 'unregistered';
-                    this.log(`"${this._unregisteredRepo}" não está cadastrado em nenhum produto desta conta`);
-                } else {
-                    await this._setContext('msgram.configured', false);
-                    this._state = 'not_configured';
-                }
-                this._deps.statusBar?.setNotConfigured();
-                this.fire();
+                await this._showMissingProduct(hints);
                 return;
             }
             this._context = result.context;
@@ -211,6 +197,24 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             this.log(`erro: ${this._error.message}`);
             this.fire();
         }
+    }
+
+    private async _showMissingProduct(hints: { remoteName?: string; folderName?: string }): Promise<void> {
+        this._context = null;
+        this._selectedRepo = null;
+        this._score = null;
+        this._unregisteredRepo = hints.remoteName ?? hints.folderName ?? null;
+        if (this._unregisteredRepo) {
+            // Há token e pasta aberta, mas o repositório não está em nenhum produto: mostra na árvore.
+            await this._setContext('msgram.configured', true);
+            this._state = 'unregistered';
+            this.log(`"${this._unregisteredRepo}" não está cadastrado em nenhum produto desta conta`);
+        } else {
+            await this._setContext('msgram.configured', false);
+            this._state = 'not_configured';
+        }
+        this._deps.statusBar?.setNotConfigured();
+        this.fire();
     }
 
     private async _loadScore(): Promise<void> {
@@ -331,55 +335,72 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             return [];
         }
         if (this._state === 'unregistered') {
-            return [
-                {
-                    kind: 'error',
-                    label: `"${this._unregisteredRepo}" não está cadastrado`,
-                    description: 'em nenhum produto desta conta',
-                    tooltip: 'Cadastre o repositório em um produto no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez. Ou informe o produto em Configurar.',
-                    icon: new ThemeIcon('repo', new ThemeColor('charts.yellow')),
-                },
-                {kind: 'action', label: 'Cadastrar automaticamente', description: 'cria o repositório no produto que você escolher', icon: new ThemeIcon('cloud-upload'), command: {command: 'msgram.registerRepo', title: 'Cadastrar'}},
-                {kind: 'action', label: 'Abrir o site do MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
-                {kind: 'action', label: 'Informar o produto manualmente', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
-                {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
-            ];
+            return this.unregisteredNodes();
         }
         if (this._state === 'loading' && !this._score) {
             return [{kind: 'loading', label: 'Carregando…', icon: new ThemeIcon('loading~spin')}];
         }
         if (this._state === 'error' && this._error) {
-            return [
-                {
-                    kind: 'error',
-                    label: this._error.kind === 'auth' ? 'Token inválido ou expirado' : 'Não foi possível carregar',
-                    description: this._error.kind,
-                    tooltip: this._error.message,
-                    icon: new ThemeIcon('error', new ThemeColor('errorForeground')),
-                    command: {command: 'msgram.refresh', title: 'Tentar de novo'},
-                },
-                this.actionsNode(),
-            ];
+            return [this.errorNode(this._error), this.actionsNode()];
         }
 
         const ctx = this._context;
+        const nodes: QualityNode[] = [...this.contextNodes(ctx), ...scoreNodes(this._score)];
+        if (ctx) {
+            nodes.push({kind: 'dashboards', label: 'Dashboards Grafana', icon: new ThemeIcon('graph-line')});
+        }
+        nodes.push(this.actionsNode());
+        return nodes;
+    }
+
+    private unregisteredNodes(): QualityNode[] {
+        return [
+            {
+                kind: 'error',
+                label: `"${this._unregisteredRepo}" não está cadastrado`,
+                description: 'em nenhum produto desta conta',
+                tooltip: 'Cadastre o repositório em um produto no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez. Ou informe o produto em Configurar.',
+                icon: new ThemeIcon('repo', new ThemeColor('charts.yellow')),
+            },
+            {kind: 'action', label: 'Cadastrar automaticamente', description: 'cria o repositório no produto que você escolher', icon: new ThemeIcon('cloud-upload'), command: {command: 'msgram.registerRepo', title: 'Cadastrar'}},
+            {kind: 'action', label: 'Abrir o site do MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
+            {kind: 'action', label: 'Informar o produto manualmente', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
+            {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
+        ];
+    }
+
+    private errorNode(error: { message: string; kind: string }): QualityNode {
+        return {
+            kind: 'error',
+            label: error.kind === 'auth' ? 'Token inválido ou expirado' : 'Não foi possível carregar',
+            description: error.kind,
+            tooltip: error.message,
+            icon: new ThemeIcon('error', new ThemeColor('errorForeground')),
+            command: {command: 'msgram.refresh', title: 'Tentar de novo'},
+        };
+    }
+
+    /** Produto e repositório selecionado. */
+    private contextNodes(ctx: RepoContext | null): QualityNode[] {
         const nodes: QualityNode[] = [];
         if (ctx) {
+            const manyOrgs = ctx.organizations.length > 1;
             nodes.push({
                 kind: 'product',
                 label: ctx.productName,
                 description: ctx.orgName,
                 tooltip: `Produto **${ctx.productName}** · organização **${ctx.orgName}**` +
-                    (ctx.organizations.length > 1 ? '\n\nClique para trocar de organização.' : ''),
+                    (manyOrgs ? '\n\nClique para trocar de organização.' : ''),
                 icon: new ThemeIcon('package'),
-                command: ctx.organizations.length > 1 ? {command: 'msgram.selectOrganization', title: 'Trocar organização'} : undefined,
+                command: manyOrgs ? {command: 'msgram.selectOrganization', title: 'Trocar organização'} : undefined,
             });
         }
         if (this._selectedRepo) {
+            const repoCount = ctx?.repos.length ?? 0;
             nodes.push({
                 kind: 'repo',
                 label: this._selectedRepo.name,
-                description: (ctx?.repos.length ?? 0) > 1 ? `${ctx!.repos.length} repositórios` : undefined,
+                description: repoCount > 1 ? `${repoCount} repositórios` : undefined,
                 tooltip: 'Clique para trocar de repositório.',
                 icon: new ThemeIcon('repo'),
                 command: {command: 'msgram.selectRepository', title: 'Trocar repositório'},
@@ -387,52 +408,6 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
         } else if (ctx) {
             nodes.push({kind: 'noData', label: 'Produto sem repositórios', icon: new ThemeIcon('info')});
         }
-
-        const s = this._score;
-        if (s && s.noData) {
-            nodes.push({kind: 'noData', label: 'Sem métricas calculadas', description: 'rode a Action', icon: new ThemeIcon('circle-slash')});
-        } else if (s) {
-            const goals = s.characteristics.filter((c) => c.goal !== null);
-            const avgGoal = goals.length ? goals.reduce((a, c) => a + (c.goal ?? 0), 0) / goals.length : null;
-            const ok = avgGoal === null ? null : s.score >= avgGoal;
-            nodes.push({
-                kind: 'score',
-                label: `TSQMI ${s.score.toFixed(2)}`,
-                description: avgGoal === null ? 'sem meta' : `meta ${avgGoal.toFixed(2)} ${ok ? '✓' : '✗'}`,
-                icon: new ThemeIcon('dashboard', new ThemeColor(ok === false ? 'charts.red' : ok ? 'charts.green' : 'charts.yellow')),
-                command: {command: 'msgram.run', title: 'Abrir painel'},
-            });
-            nodes.push({
-                kind: 'lastAnalysis',
-                label: s.lastAnalysisAt ? `Última análise ${relative(s.lastAnalysisAt)}` : 'Nunca analisado',
-                tooltip: s.lastAnalysisAt ? new Date(s.lastAnalysisAt).toLocaleString('pt-BR') : undefined,
-                icon: new ThemeIcon('history'),
-            });
-            nodes.push({
-                kind: 'characteristics',
-                label: 'Características',
-                description: `${s.characteristics.length}`,
-                icon: new ThemeIcon('list-tree'),
-                children: s.characteristics.map((c) => {
-                    const below = c.goal !== null && c.value < c.goal;
-                    const near = c.goal !== null && !below && c.value < c.goal * 1.1;
-                    return {
-                        kind: 'characteristic' as const,
-                        label: c.name,
-                        description: `${c.value.toFixed(2)}${c.goal !== null ? ` / meta ${c.goal.toFixed(2)}` : ''}`,
-                        tooltip: `**${c.name}**: ${c.value.toFixed(2)}${c.goal !== null ? ` (meta ${c.goal.toFixed(2)})` : ' (sem meta)'}\n\nMedido em ${new Date(c.measuredAt).toLocaleString('pt-BR')}`,
-                        icon: new ThemeIcon(
-                            below ? 'warning' : 'pass',
-                            new ThemeColor(below ? 'charts.red' : near ? 'charts.yellow' : 'charts.green'),
-                        ),
-                    };
-                }),
-            });
-        }
-        if (ctx) {
-            nodes.push({kind: 'dashboards', label: 'Dashboards Grafana', icon: new ThemeIcon('graph-line')});
-        }
-        nodes.push(this.actionsNode());
         return nodes;
     }
 
@@ -449,6 +424,72 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             ],
         };
     }
+}
+
+/** TSQMI, última análise e características. */
+function scoreNodes(s: ScoreData | null): QualityNode[] {
+    if (!s) {
+        return [];
+    }
+    if (s.noData) {
+        return [{kind: 'noData', label: 'Sem métricas calculadas', description: 'rode a Action', icon: new ThemeIcon('circle-slash')}];
+    }
+    return [
+        tsqmiNode(s),
+        {
+            kind: 'lastAnalysis',
+            label: s.lastAnalysisAt ? `Última análise ${relative(s.lastAnalysisAt)}` : 'Nunca analisado',
+            tooltip: s.lastAnalysisAt ? new Date(s.lastAnalysisAt).toLocaleString('pt-BR') : undefined,
+            icon: new ThemeIcon('history'),
+        },
+        {
+            kind: 'characteristics',
+            label: 'Características',
+            description: `${s.characteristics.length}`,
+            icon: new ThemeIcon('list-tree'),
+            children: s.characteristics.map(characteristicNode),
+        },
+    ];
+}
+
+function tsqmiNode(s: ScoreData): QualityNode {
+    const goals = s.characteristics.filter((c) => c.goal !== null);
+    const avgGoal = goals.length ? goals.reduce((a, c) => a + (c.goal ?? 0), 0) / goals.length : null;
+    if (avgGoal === null) {
+        return scoreNode(s, 'sem meta', 'charts.yellow');
+    }
+    const ok = s.score >= avgGoal;
+    return scoreNode(s, `meta ${avgGoal.toFixed(2)} ${ok ? '✓' : '✗'}`, ok ? 'charts.green' : 'charts.red');
+}
+
+function scoreNode(s: ScoreData, description: string, color: string): QualityNode {
+    return {
+        kind: 'score',
+        label: `TSQMI ${s.score.toFixed(2)}`,
+        description,
+        icon: new ThemeIcon('dashboard', new ThemeColor(color)),
+        command: {command: 'msgram.run', title: 'Abrir painel'},
+    };
+}
+
+function characteristicNode(c: ScoreData['characteristics'][number]): QualityNode {
+    const value = c.value.toFixed(2);
+    const meta = c.goal === null ? null : `meta ${c.goal.toFixed(2)}`;
+    const below = c.goal !== null && c.value < c.goal;
+    const near = c.goal !== null && !below && c.value < c.goal * 1.1;
+    let color = 'charts.green';
+    if (below) {
+        color = 'charts.red';
+    } else if (near) {
+        color = 'charts.yellow';
+    }
+    return {
+        kind: 'characteristic',
+        label: c.name,
+        description: meta ? `${value} / ${meta}` : value,
+        tooltip: `**${c.name}**: ${value} (${meta ?? 'sem meta'})\n\nMedido em ${new Date(c.measuredAt).toLocaleString('pt-BR')}`,
+        icon: new ThemeIcon(below ? 'warning' : 'pass', new ThemeColor(color)),
+    };
 }
 
 function relative(iso: string): string {

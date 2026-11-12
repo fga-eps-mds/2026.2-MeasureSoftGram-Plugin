@@ -219,3 +219,104 @@ suite('QualityTreeProvider — seleção', () => {
         assert.strictEqual(contextKeys['msgram.configured'], false);
     });
 });
+
+suite('QualityTreeProvider — variações da árvore', () => {
+    const color = (n: QualityNode) => (n.icon as any)?.color?.id;
+    const withScore = (score: any) => makeTree({token: 'tok', productName: 'Measure', score: async () => score});
+
+    test('antes da primeira carga mostra "Carregando…"', () => {
+        const {tree} = makeTree();
+        assert.deepStrictEqual(labels(tree.rootNodes()), ['Carregando…']);
+    });
+
+    test('erro que não é HttpError: "Não foi possível carregar", tipo other e o nó de ações', async () => {
+        const {tree} = makeTree({token: 'tok', productName: 'Measure', repos: () => Promise.reject('boom')});
+        await tree.refresh();
+        const root = await tree.getChildren();
+        assert.strictEqual(root[0].label, 'Não foi possível carregar');
+        assert.strictEqual(root[0].description, 'other');
+        assert.strictEqual(root[0].tooltip, 'boom');
+        assert.deepStrictEqual(root.map((n) => n.kind), ['error', 'actions']);
+    });
+
+    test('uma organização e um repositório: sem troca de organização e sem contagem de repositórios', async () => {
+        const one = {...CTX, organizations: [CTX.organizations[0]], repos: [REPOS[0]]};
+        const {tree} = makeTree({token: 'tok', productName: 'Measure', repos: async () => one});
+        await tree.refresh();
+        const [product, repo] = await tree.getChildren();
+        assert.strictEqual(product.command, undefined);
+        assert.ok(!product.tooltip?.includes('trocar de organização'));
+        assert.strictEqual(repo.description, undefined);
+    });
+
+    test('várias organizações e repositórios: produto troca organização e repositório mostra a contagem', async () => {
+        const {tree} = makeTree({token: 'tok', productName: 'Measure'});
+        await tree.refresh();
+        const [product, repo] = await tree.getChildren();
+        assert.strictEqual(product.command?.command, 'msgram.selectOrganization');
+        assert.ok(product.tooltip?.includes('Clique para trocar de organização.'));
+        assert.strictEqual(repo.description, '2 repositórios');
+    });
+
+    test('produto sem repositórios: nó "Produto sem repositórios" e status bar sem dados', async () => {
+        const {tree, statusBar} = makeTree({token: 'tok', productName: 'Measure', repos: async () => ({...CTX, repos: []})});
+        await tree.refresh();
+        assert.strictEqual(tree.state, 'ready');
+        const root = await tree.getChildren();
+        assert.deepStrictEqual(root.map((n) => n.kind), ['product', 'noData', 'dashboards', 'actions']);
+        assert.strictEqual(root[1].label, 'Produto sem repositórios');
+        assert.ok(statusBar.calls.includes('noData'));
+    });
+
+    test('TSQMI acima da meta média fica verde com ✓', async () => {
+        const {tree} = makeTree({token: 'tok', productName: 'Measure'});
+        await tree.refresh();
+        const score = (await tree.getChildren()).find((n) => n.kind === 'score')!;
+        assert.strictEqual(score.description, 'meta 0.80 ✓');
+        assert.strictEqual(color(score), 'charts.green');
+    });
+
+    test('TSQMI abaixo da meta média fica vermelho com ✗', async () => {
+        const {tree} = withScore({...SCORE, score: 0.5});
+        await tree.refresh();
+        const score = (await tree.getChildren()).find((n) => n.kind === 'score')!;
+        assert.strictEqual(score.description, 'meta 0.80 ✗');
+        assert.strictEqual(color(score), 'charts.red');
+    });
+
+    test('sem metas: TSQMI "sem meta" em amarelo e características sem meta em verde', async () => {
+        const chars = SCORE.characteristics.map((c) => ({...c, goal: null}));
+        const {tree} = withScore({...SCORE, hasGoal: false, characteristics: chars});
+        await tree.refresh();
+        const root = await tree.getChildren();
+        const score = root.find((n) => n.kind === 'score')!;
+        assert.strictEqual(score.description, 'sem meta');
+        assert.strictEqual(color(score), 'charts.yellow');
+        const kids = await tree.getChildren(root.find((n) => n.kind === 'characteristics'));
+        assert.strictEqual(kids[0].description, '0.57');
+        assert.ok(kids[0].tooltip?.includes('(sem meta)'));
+        assert.strictEqual((kids[0].icon as any).id, 'pass');
+        assert.strictEqual(color(kids[0]), 'charts.green');
+    });
+
+    test('característica perto da meta (até 10% acima) fica amarela; abaixo, vermelha', async () => {
+        const chars = [
+            {key: 'a', name: 'A', value: 0.85, goal: 0.8, measuredAt: '2026-10-01T00:00:00Z'},
+            {key: 'b', name: 'B', value: 0.5, goal: 0.8, measuredAt: '2026-10-01T00:00:00Z'},
+        ];
+        const {tree} = withScore({...SCORE, characteristics: chars});
+        await tree.refresh();
+        const kids = await tree.getChildren((await tree.getChildren()).find((n) => n.kind === 'characteristics'));
+        assert.strictEqual(color(kids[0]), 'charts.yellow');
+        assert.ok(kids[0].tooltip?.includes('(meta 0.80)'));
+        assert.strictEqual(color(kids[1]), 'charts.red');
+    });
+
+    test('sem análise registrada: "Nunca analisado" sem tooltip', async () => {
+        const {tree} = withScore({...SCORE, lastAnalysisAt: null});
+        await tree.refresh();
+        const last = (await tree.getChildren()).find((n) => n.kind === 'lastAnalysis')!;
+        assert.strictEqual(last.label, 'Nunca analisado');
+        assert.strictEqual(last.tooltip, undefined);
+    });
+});

@@ -147,6 +147,16 @@ export interface DiscoveredRepo extends RepoContext {
   repo: RepoItem;
 }
 
+/** Na descoberta, uma lista sem acesso é registrada no log e tratada como vazia. */
+async function getAllOrSkip<T>(url: string, o: ReturnType<typeof opts>, log: Logger, what: string): Promise<T[]> {
+  try {
+    return await getAll<T>(url, o);
+  } catch (err) {
+    log(`[${ts()}] → ${what} (${(err as Error).message}); pulando.`);
+    return [];
+  }
+}
+
 /**
  * Procura, em todas as organizações e produtos do token, um repositório que
  * case com a pasta aberta (remote origin ou nome da pasta). Devolve o
@@ -170,21 +180,12 @@ export async function discoverRepository(
   const exactNames = [hints.remoteName, hints.folderName].filter((h): h is string => !!h).map((h) => norm(h));
 
   for (const org of organizations) {
-    let products: ProductItem[];
-    try {
-      products = await getAll<ProductItem>(`${base}/organizations/${org.id}/products/`, o);
-    } catch (err) {
-      log(`[${ts()}] → "${org.name}": não foi possível listar produtos (${(err as Error).message}); pulando.`);
-      continue;
-    }
+    const products = await getAllOrSkip<ProductItem>(
+        `${base}/organizations/${org.id}/products/`, o, log, `"${org.name}": não foi possível listar produtos`);
     for (const product of products) {
-      let repos: RepoItem[];
-      try {
-        repos = await getAll<RepoItem>(`${base}/organizations/${org.id}/products/${product.id}/repositories/`, o);
-      } catch (err) {
-        log(`[${ts()}] → "${org.name}" / "${product.name.trim()}": sem acesso aos repositórios (${(err as Error).message}); pulando.`);
-        continue;
-      }
+      const repos = await getAllOrSkip<RepoItem>(
+          `${base}/organizations/${org.id}/products/${product.id}/repositories/`, o, log,
+          `"${org.name}" / "${product.name.trim()}": sem acesso aos repositórios`);
       const match = pickMatchingRepo(repos, hints);
       if (!match) {
         continue;

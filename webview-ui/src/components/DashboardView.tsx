@@ -14,8 +14,11 @@ interface DashboardViewProps {
     now?: Date;
 }
 
+type Characteristic = ScoreData['characteristics'][number];
+type ScoreStatus = 'ok' | 'warn' | 'fail' | 'none';
+
 /** Medidor circular do TSQMI. */
-const Gauge: React.FC<{ value: number | null; status: 'ok' | 'warn' | 'fail' | 'none' }> = ({value, status}) => {
+const Gauge: React.FC<{ value: number | null; status: ScoreStatus }> = ({value, status}) => {
     const r = 44;
     const c = 2 * Math.PI * r;
     const pct = value === null ? 0 : Math.max(0, Math.min(1, value));
@@ -38,6 +41,59 @@ const Gauge: React.FC<{ value: number | null; status: 'ok' | 'warn' | 'fail' | '
     );
 };
 
+/** Meta média das características com meta e a característica mais abaixo da sua meta. */
+function goalSummary(characteristics: Characteristic[]) {
+    const withGoal = characteristics.filter(
+        (c): c is Characteristic & {goal: number} => c.goal !== null,
+    );
+    const avgGoal = withGoal.length
+        ? withGoal.reduce((s, c) => s + c.goal, 0) / withGoal.length
+        : null;
+
+    const belowGoal = withGoal.filter((c) => c.value < c.goal);
+    const worstChar = belowGoal.length
+        ? belowGoal.reduce((worst, c) => (c.value - c.goal < worst.value - worst.goal ? c : worst), belowGoal[0])
+        : undefined;
+    return {avgGoal, worstChar};
+}
+
+function scoreStatusOf(scoreData: ScoreData | null, score: number, avgGoal: number | null): ScoreStatus {
+    if (!scoreData || scoreData.noData) {
+        return 'none';
+    }
+    if (avgGoal === null) {
+        return 'warn';
+    }
+    if (score >= avgGoal) {
+        return 'ok';
+    }
+    return score >= avgGoal * 0.9 ? 'warn' : 'fail';
+}
+
+const CharacteristicRow: React.FC<{ c: Characteristic }> = ({c}) => {
+    const status = getCharStatus(c.value, c.goal);
+    const mark = c.goal === null || c.value >= c.goal ? '✓' : '~';
+    const pct = Math.round(Math.max(0, Math.min(1, c.value)) * 100);
+    return (
+        <div className={`char-row ${status}`}>
+            <div className="char-head">
+                <i className={`codicon ${status === 'ok' ? 'codicon-pass' : 'codicon-warning'} char-icon ${status}`} aria-hidden="true"/>
+                <span className="char-name">{c.name}</span>
+                <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
+                <span className="char-goal">
+                    meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
+                </span>
+            </div>
+            <div className="char-bar">
+                <div className={`char-fill ${status}`} style={{width: `${pct}%`}}/>
+                {c.goal !== null && (
+                    <div className="char-goal-mark" style={{left: `${Math.round(c.goal * 100)}%`}} title={`meta ${c.goal.toFixed(2)}`}/>
+                )}
+            </div>
+        </div>
+    );
+};
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
                                                                 scoreData,
                                                                 scoreLoading,
@@ -51,25 +107,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const score = scoreData?.score ?? 0;
     const hasGoal = !!scoreData?.hasGoal;
 
-    const withGoal = (scoreData?.characteristics ?? []).filter(
-        (c): c is typeof c & {goal: number} => c.goal !== null,
-    );
-    const avgGoal = withGoal.length
-        ? withGoal.reduce((s, c) => s + c.goal, 0) / withGoal.length
-        : null;
-
-    const belowGoal = withGoal.filter((c) => c.value < c.goal);
-    const worstChar = belowGoal.length
-        ? belowGoal.reduce((worst, c) => (c.value - c.goal < worst.value - worst.goal ? c : worst), belowGoal[0])
-        : undefined;
+    const {avgGoal, worstChar} = goalSummary(scoreData?.characteristics ?? []);
 
     const productLabel = productName || 'sem produto configurado';
 
-    const scoreStatus: 'ok' | 'warn' | 'fail' | 'none' =
-        !scoreData || scoreData.noData ? 'none'
-            : avgGoal === null ? 'warn'
-                : score >= avgGoal ? 'ok'
-                    : score >= avgGoal * 0.9 ? 'warn' : 'fail';
+    const scoreStatus = scoreStatusOf(scoreData, score, avgGoal);
 
     let metaStatus: React.ReactNode = '—';
     if (scoreData && avgGoal !== null) {
@@ -175,29 +217,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
             )}
             <div id="chars-dashboard">
-                {scoreData?.characteristics.map((c) => {
-                    const status = getCharStatus(c.value, c.goal);
-                    const mark = c.goal === null || c.value >= c.goal ? '✓' : '~';
-                    const pct = Math.round(Math.max(0, Math.min(1, c.value)) * 100);
-                    return (
-                        <div key={c.key} className={`char-row ${status}`}>
-                            <div className="char-head">
-                                <i className={`codicon ${status === 'ok' ? 'codicon-pass' : 'codicon-warning'} char-icon ${status}`} aria-hidden="true"/>
-                                <span className="char-name">{c.name}</span>
-                                <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
-                                <span className="char-goal">
-                                    meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
-                                </span>
-                            </div>
-                            <div className="char-bar">
-                                <div className={`char-fill ${status}`} style={{width: `${pct}%`}}/>
-                                {c.goal !== null && (
-                                    <div className="char-goal-mark" style={{left: `${Math.round(c.goal * 100)}%`}} title={`meta ${c.goal.toFixed(2)}`}/>
-                                )}
-                            </div>
-                        </div>
-                    );
-                })}
+                {scoreData?.characteristics.map((c) => <CharacteristicRow key={c.key} c={c}/>)}
             </div>
         </div>
     );

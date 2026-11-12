@@ -412,6 +412,12 @@ export abstract class MeasureSoftGramBase {
         }
     }
 
+    private async _reloadIfConfigured(fetchRepos: FetchRepositoriesFn, fetchScore: FetchScoreForRepoFn): Promise<void> {
+        if (await this._refreshSettingsAndGate()) {
+            await this._loadReposAndScore(fetchRepos, fetchScore);
+        }
+    }
+
     protected async _handleCommonMessage(
         message: { command: string; [k: string]: unknown },
         fetchRepos: FetchRepositoriesFn = defaultFetchRepositories,
@@ -424,15 +430,8 @@ export abstract class MeasureSoftGramBase {
 
         switch (message.command) {
             case 'request_score':
-                if (await this._refreshSettingsAndGate()) {
-                    await this._loadReposAndScore(fetchRepos, fetchScore);
-                }
-                return true;
-
             case 'retry':
-                if (await this._refreshSettingsAndGate()) {
-                    await this._loadReposAndScore(fetchRepos, fetchScore);
-                }
+                await this._reloadIfConfigured(fetchRepos, fetchScore);
                 return true;
 
             case 'select_org': {
@@ -448,9 +447,7 @@ export abstract class MeasureSoftGramBase {
 
             case 'clear_secret': {
                 await clearSecret(message.key as SecretKey, this._settingsDeps);
-                if (await this._refreshSettingsAndGate()) {
-                    await this._loadReposAndScore(fetchRepos, fetchScore);
-                }
+                await this._reloadIfConfigured(fetchRepos, fetchScore);
                 return true;
             }
 
@@ -484,9 +481,7 @@ export abstract class MeasureSoftGramBase {
                 this._selectedRepo = null;
                 this._orgPkOverride = null;
                 this.post({command: 'settings_saved'});
-                if (await this._refreshSettingsAndGate()) {
-                    await this._loadReposAndScore(fetchRepos, fetchScore);
-                }
+                await this._reloadIfConfigured(fetchRepos, fetchScore);
                 return true;
 
             case 'request_grafana_dashboards':
