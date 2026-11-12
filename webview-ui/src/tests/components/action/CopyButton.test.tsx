@@ -58,7 +58,7 @@ describe('CopyButton', () => {
         expect(() => fireEvent.click(screen.getByRole('button'))).not.toThrow();
     });
 
-    it('não deve quebrar se btnRef for null no momento do reset', async () => {
+    it('não deve quebrar se btnRef for null no momento do reset', () => {
         vi.useFakeTimers();
 
         const {unmount} = render(<CopyButton getValue={getValue}/>);
@@ -66,9 +66,9 @@ describe('CopyButton', () => {
 
         unmount();
 
-        await act(async () => {
+        expect(() => act(() => {
             vi.advanceTimersByTime(1500);
-        });
+        })).not.toThrow();
 
         vi.useRealTimers();
     });
