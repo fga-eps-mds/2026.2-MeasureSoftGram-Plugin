@@ -40,6 +40,85 @@ export type ResolveResult =
     | { kind: 'empty'; context: RepoContext }
     | { kind: 'missingProduct' };
 
+type ProductLoad = { context: RepoContext | null; productError: HttpError | null };
+
+/** 1. Carrega o produto configurado, se houver. */
+async function loadConfiguredProduct(
+    settings: MsgramSettings,
+    hasHints: boolean,
+    fetchRepositories: typeof defaultFetchRepositories,
+    log: Logger,
+): Promise<ProductLoad> {
+    if (!settings.productName.trim()) {
+        return {context: null, productError: null};
+    }
+    try {
+        return {context: await fetchRepositories(settings, log), productError: null};
+    } catch (err) {
+        // Produto configurado não existe (mais) nesta conta: ainda dá para descobrir.
+        if (err instanceof HttpError && err.kind === 'not_found' && hasHints) {
+            return {context: null, productError: err};
+        }
+        throw err;
+    }
+}
+
+/** Escolhe o repositório dentro do produto configurado: o que já estava selecionado ou o da pasta aberta. */
+function pickInProduct(
+    context: RepoContext,
+    hints: WorkspaceHints,
+    hasHints: boolean,
+    keepRepoPk: number | null,
+): ResolveResult | null {
+    // Mantém a escolha da pessoa ao recarregar.
+    const keep = keepRepoPk !== null ? context.repos.find((r) => r.id === keepRepoPk) : undefined;
+    if (keep) {
+        return {kind: 'ok', context, selectedRepo: keep, detected: false};
+    }
+    const match = hasHints ? pickMatchingRepo(context.repos, hints) : undefined;
+    return match ? {kind: 'ok', context, selectedRepo: match, detected: true} : null;
+}
+
+/** 2 e 3. Descobre a pasta aberta em toda a conta e persiste o produto quando ele muda. */
+async function discoverInAccount(
+    settings: MsgramSettings,
+    hints: WorkspaceHints,
+    context: RepoContext | null,
+    discover: typeof defaultDiscover,
+    persist: ResolveDeps['persist'],
+    log: Logger,
+): Promise<ResolveResult | null> {
+    const found = await discover(settings, hints, log);
+    if (!found) {
+        return null;
+    }
+    const switched = !context || found.productPk !== context.productPk;
+    const {repo, ...ctx} = found;
+    if (switched) {
+        await persist?.({productName: ctx.productName, organizationName: ctx.orgName});
+    }
+    return {
+        kind: 'ok',
+        context: ctx,
+        selectedRepo: repo,
+        detected: true,
+        switched: switched ? {productName: ctx.productName, orgName: ctx.orgName} : undefined,
+    };
+}
+
+/** 4. Sem casamento: primeiro repositório do produto configurado ou `missingProduct`. */
+function fallback({context, productError}: ProductLoad): ResolveResult {
+    if (context) {
+        return context.repos.length
+            ? {kind: 'ok', context, selectedRepo: context.repos[0], detected: false}
+            : {kind: 'empty', context};
+    }
+    if (productError) {
+        throw productError;
+    }
+    return {kind: 'missingProduct'};
+}
+
 export async function resolveRepoContext(
     settings: MsgramSettings,
     hints: WorkspaceHints,
@@ -51,60 +130,13 @@ export async function resolveRepoContext(
     const log = deps.log ?? (() => {});
     const hasHints = !!(hints.remoteName || hints.folderName);
 
-    let context: RepoContext | null = null;
-    let productError: HttpError | null = null;
-
-    if (settings.productName.trim()) {
-        try {
-            context = await fetchRepositories(settings, log);
-        } catch (err) {
-            // Produto configurado não existe (mais) nesta conta: ainda dá para descobrir.
-            if (err instanceof HttpError && err.kind === 'not_found' && hasHints) {
-                productError = err;
-            } else {
-                throw err;
-            }
-        }
+    const loaded = await loadConfiguredProduct(settings, hasHints, fetchRepositories, log);
+    const picked = loaded.context ? pickInProduct(loaded.context, hints, hasHints, keepRepoPk) : null;
+    if (picked) {
+        return picked;
     }
-
-    if (context) {
-        // Mantém a escolha da pessoa ao recarregar.
-        const keep = keepRepoPk !== null ? context.repos.find((r) => r.id === keepRepoPk) : undefined;
-        if (keep) {
-            return {kind: 'ok', context, selectedRepo: keep, detected: false};
-        }
-        const match = hasHints ? pickMatchingRepo(context.repos, hints) : undefined;
-        if (match) {
-            return {kind: 'ok', context, selectedRepo: match, detected: true};
-        }
-    }
-
-    if (hasHints) {
-        const found = await discover(settings, hints, log);
-        if (found) {
-            const switched = !context || found.productPk !== context.productPk;
-            const {repo, ...ctx} = found;
-            if (switched) {
-                await deps.persist?.({productName: ctx.productName, organizationName: ctx.orgName});
-            }
-            return {
-                kind: 'ok',
-                context: ctx,
-                selectedRepo: repo,
-                detected: true,
-                switched: switched ? {productName: ctx.productName, orgName: ctx.orgName} : undefined,
-            };
-        }
-    }
-
-    if (context) {
-        if (!context.repos.length) {
-            return {kind: 'empty', context};
-        }
-        return {kind: 'ok', context, selectedRepo: context.repos[0], detected: false};
-    }
-    if (productError) {
-        throw productError;
-    }
-    return {kind: 'missingProduct'};
+    const discovered = hasHints
+        ? await discoverInAccount(settings, hints, loaded.context, discover, deps.persist, log)
+        : null;
+    return discovered ?? fallback(loaded);
 }
