@@ -25,6 +25,10 @@ interface Fixture {
   tsqmi?: number | null;
   chars?: { key: string; name: string; latest: { value: number; created_at: string } | null }[];
   status?: { orgs?: number };
+  /** organização cujos produtos respondem 403 */
+  failProductsOfOrg?: number;
+  /** produto cujos repositórios respondem 403 */
+  failReposOfProduct?: number;
 }
 
 const DEFAULT_CHARS = [
@@ -84,11 +88,17 @@ function startServer(fx: Fixture): Promise<{ baseUrl: string; close: () => Promi
       req.on('end', () => { posted.push({path: p, body: JSON.parse(body)}); json(201, {id: 555, name: JSON.parse(body).name}); });
       return;
     }
+    if (mProducts && Number(mProducts[1]) === fx.failProductsOfOrg) {
+      return json(403, {detail: 'sem acesso'});
+    }
     if (mProducts) {
       return json(200, {count: products.length, next: null, previous: null, results: products});
     }
 
     const mRepos = p.match(/^\/api\/v1\/organizations\/(\d+)\/products\/(\d+)\/repositories\/$/);
+    if (mRepos && Number(mRepos[2]) === fx.failReposOfProduct) {
+      return json(403, {detail: 'sem acesso'});
+    }
     if (mRepos && fx.reposByProduct) {
       const list = fx.reposByProduct[Number(mRepos[2])] ?? [];
       return json(200, {count: list.length, next: null, previous: null, results: list});
@@ -350,6 +360,39 @@ suite('msgramApi contrato — discoverRepository', () => {
       const before = srv.hits.length;
       assert.strictEqual(await discoverRepository(settings(srv.baseUrl), {}), null);
       assert.strictEqual(srv.hits.length, before);
+    } finally {
+      await srv.close();
+    }
+  });
+});
+
+suite('msgramApi contrato — discoverRepository (falhas e sufixo)', () => {
+  test('pula organização e produto sem acesso e devolve o casamento por sufixo', async () => {
+    const srv = await startServer({
+      orgs: [{id: 1, name: 'Fechada'}, {id: 2, name: 'EPS/MDS'}],
+      products: [{id: 10, name: 'Sem acesso'}, {id: 20, name: 'Measure'}],
+      reposByProduct: {20: [{id: 200, name: '2026.2-MeasureSoftGram-Plugin'}]},
+      failProductsOfOrg: 1,
+      failReposOfProduct: 10,
+    });
+    const logs: string[] = [];
+    try {
+      const found = await discoverRepository(settings(srv.baseUrl), {remoteName: 'MeasureSoftGram-Plugin'}, (m) => logs.push(m));
+      assert.strictEqual(found?.repo.id, 200);
+      assert.strictEqual(found?.orgPk, 2);
+      assert.strictEqual(logs.filter((l) => l.includes('pulando')).length, 2);
+      assert.ok(logs.some((l) => l.includes('Encontrado por sufixo')));
+    } finally {
+      await srv.close();
+    }
+  });
+
+  test('sem casamento, registra que o repositório não está em nenhum produto', async () => {
+    const srv = await startServer({reposByProduct: {3: [{id: 1, name: 'x'}]}});
+    const logs: string[] = [];
+    try {
+      assert.strictEqual(await discoverRepository(settings(srv.baseUrl), {folderName: 'nada-a-ver'}, (m) => logs.push(m)), null);
+      assert.ok(logs.some((l) => l.includes('não está em nenhum produto')));
     } finally {
       await srv.close();
     }

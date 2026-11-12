@@ -417,6 +417,52 @@ suite('MeasureSoftGramBase', () => {
         assert.deepStrictEqual(vscode.commands._executed[0], { command: 'workbench.action.openSettings', args: ['msgram'] });
     });
 
+    test('register_repo executa o comando msgram.registerRepo', async () => {
+        const vscode = require('vscode');
+        vscode.commands._executed.length = 0;
+        const base = new TestableBase(makeExtensionContext());
+
+        assert.strictEqual(await base.handleMessage({ command: 'register_repo' }), true);
+
+        assert.deepStrictEqual(vscode.commands._executed[0], { command: 'msgram.registerRepo', args: [] });
+    });
+
+    test('handleCommonMessage sem webview não trata a mensagem', async () => {
+        const base = new TestableBase(makeExtensionContext());
+        (base as any).webviewInstance = undefined;
+
+        assert.strictEqual(await base.handleCommonMessage({ command: 'request_score' }), false);
+    });
+
+    test('select_org com organização desconhecida não recarrega', async () => {
+        let calls = 0;
+        const fetchRepos = async () => { calls++; return { orgPk: 1, orgName: 'o', organizations: [{ id: 1, name: 'o' }], productPk: 2, productName: 'P', repos: [{ id: 1, name: 'r' }] }; };
+        const base = new TestableBase(makeExtensionContext({ token: 'tok', productName: 'P' }), fetchRepos as any);
+        await base.handleMessage({ command: 'request_score' });
+
+        assert.strictEqual(await base.handleMessage({ command: 'select_org', orgPk: 99 }), true);
+
+        assert.strictEqual(calls, 1);
+    });
+
+    test('select_repo sem contexto carregado não muda a seleção', async () => {
+        const base = new TestableBase(makeExtensionContext());
+
+        assert.strictEqual(await base.handleCommonMessage({ command: 'select_repo', repoPk: 2 }), true);
+
+        assert.strictEqual(base.getSelectedRepo(), null);
+    });
+
+    test('clear_secret sem token não tenta carregar repositórios', async () => {
+        let calls = 0;
+        const fetchRepos = async () => { calls++; return { orgPk: 1, orgName: 'o', organizations: [], productPk: 2, productName: 'P', repos: [] }; };
+        const base = new TestableBase(makeExtensionContext({ productName: 'P' }), fetchRepos as any);
+
+        assert.strictEqual(await base.handleMessage({ command: 'clear_secret', key: 'msgram.token' }), true);
+
+        assert.strictEqual(calls, 0);
+    });
+
     test('save_settings com token emite settings_saved e carrega dados', async () => {
         const base = new TestableBase(makeExtensionContext());
         base.webviewInstance.posted.length = 0;
