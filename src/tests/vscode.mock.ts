@@ -105,7 +105,9 @@ const vscode = {
             return { dispose: () => {} };
         };
         fire(data: any) { this._listeners.forEach(l => l(data)); }
-        dispose() {}
+        dispose() {
+            // no-op: o mock não guarda recursos a liberar
+        }
     },
 
     Disposable: class Disposable {
