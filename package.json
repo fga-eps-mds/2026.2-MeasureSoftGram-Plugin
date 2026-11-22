@@ -1,10 +1,11 @@
 {
   "name": "measuresoftgram",
   "displayName": "MeasureSoftGram",
-  "description": "Análise multidimensional da qualidade de software, direto no VS Code.",
+  "description": "%extension.description%",
   "version": "1.1.0",
   "publisher": "MeasureSoftGram",
   "license": "AGPL-3.0",
+  "l10n": "./l10n",
   "homepage": "https://fga-eps-mds.github.io/MeasureSoftGram-Docs/",
   "repository": {
     "type": "git",
@@ -56,14 +57,14 @@
       "msgram-sidebar": [
         {
           "id": "msgram.qualityView",
-          "name": "Qualidade",
+          "name": "%view.quality.name%",
           "icon": "assets/icon.svg",
           "contextualTitle": "MeasureSoftGram"
         },
         {
           "type": "webview",
           "id": "msgram.sidebarView",
-          "name": "Painel",
+          "name": "%view.panel.name%",
           "visibility": "collapsed"
         }
       ]
@@ -71,60 +72,60 @@
     "commands": [
       {
         "command": "msgram.run",
-        "title": "Abrir MeasureSoftGram (Panel)",
+        "title": "%command.run.title%",
         "icon": "$(graph)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.openSettings",
-        "title": "Configurar",
+        "title": "%command.openSettings.title%",
         "icon": "$(gear)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.clearTokens",
-        "title": "Remover tokens salvos",
+        "title": "%command.clearTokens.title%",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.refresh",
-        "title": "Atualizar",
+        "title": "%command.refresh.title%",
         "icon": "$(refresh)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.selectRepository",
-        "title": "Trocar repositório",
+        "title": "%command.selectRepository.title%",
         "icon": "$(repo)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.selectOrganization",
-        "title": "Trocar organização",
+        "title": "%command.selectOrganization.title%",
         "icon": "$(organization)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.openDashboard",
-        "title": "Abrir dashboard do Grafana",
+        "title": "%command.openDashboard.title%",
         "icon": "$(graph)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.openActionTab",
-        "title": "Executar Action localmente",
+        "title": "%command.openActionTab.title%",
         "icon": "$(play)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.openSite",
-        "title": "Abrir site do MeasureSoftGram",
+        "title": "%command.openSite.title%",
         "icon": "$(link-external)",
         "category": "MeasureSoftGram"
       },
       {
         "command": "msgram.registerRepo",
-        "title": "Cadastrar este repositório no MeasureSoftGram",
+        "title": "%command.registerRepo.title%",
         "icon": "$(cloud-upload)",
         "category": "MeasureSoftGram"
       }
@@ -204,34 +205,34 @@
         "msgram.serviceUrl": {
           "type": "string",
           "default": "https://msgram.lappis.rocks",
-          "description": "URL base do serviço MeasureSoftGram."
+          "description": "%config.serviceUrl.description%"
         },
         "msgram.productName": {
           "type": "string",
           "default": "",
-          "description": "Nome do produto cadastrado no serviço MeasureSoftGram."
+          "description": "%config.productName.description%"
         },
         "msgram.organizationName": {
           "type": "string",
           "default": "",
-          "description": "Organização a usar quando a conta tiver mais de uma. Vazio = a primeira."
+          "description": "%config.organizationName.description%"
         },
         "msgram.sonarProjectKey": {
           "type": "string",
           "default": "",
-          "description": "Chave do projeto no SonarCloud (opcional, usada pela Action)."
+          "description": "%config.sonarProjectKey.description%"
         },
         "msgram.workflowName": {
           "type": "string",
           "default": "Build",
-          "description": "Nome do workflow de build que a Action observa (on: workflow_run)."
+          "description": "%config.workflowName.description%"
         },
         "msgram.requestTimeoutMs": {
           "type": "number",
           "default": 15000,
           "minimum": 1000,
           "maximum": 60000,
-          "description": "Tempo limite de cada requisição ao serviço, em milissegundos."
+          "description": "%config.requestTimeoutMs.description%"
         },
         "msgram.grafanaAllowedHosts": {
           "type": "array",
@@ -239,14 +240,14 @@
             "type": "string"
           },
           "default": [],
-          "description": "Hosts permitidos para os dashboards do Grafana. Vazio = qualquer host HTTPS."
+          "description": "%config.grafanaAllowedHosts.description%"
         }
       }
     },
     "viewsWelcome": [
       {
         "view": "msgram.qualityView",
-        "contents": "A extensão ainda não está configurada.\nInforme o token da sua conta no [MeasureSoftGram](https://msgram.lappis.rocks) e o nome do produto.\n[Configurar](command:msgram.openSettings)\n[Editar settings.json](command:workbench.action.openSettings?%5B%22msgram%22%5D)",
+        "contents": "%viewsWelcome.notConfigured%",
         "when": "!msgram.configured"
       }
     ]
@@ -269,12 +270,14 @@
     "test:all": "npm run test:webview-run && npm test",
     "lint:webview": "cd webview-ui && npm run lint",
     "test:integration": "npm run compile && vscode-test",
+    "l10n:export": "npx @vscode/l10n-dev export -o ./l10n ./src ./webview-ui/src",
     "package": "npx @vscode/vsce package --no-git-tag-version"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "22.x",
     "@types/vscode": "^1.120.0",
+    "@vscode/l10n-dev": "^0.0.35",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.1.0",
     "c8": "^10.1.3",

@@ -1,0 +1,23 @@
+{
+  "extension.description": "Análise multidimensional da qualidade de software, direto no VS Code.",
+  "view.quality.name": "Qualidade",
+  "view.panel.name": "Painel",
+  "command.run.title": "Abrir MeasureSoftGram (Panel)",
+  "command.openSettings.title": "Configurar",
+  "command.clearTokens.title": "Remover tokens salvos",
+  "command.refresh.title": "Atualizar",
+  "command.selectRepository.title": "Trocar repositório",
+  "command.selectOrganization.title": "Trocar organização",
+  "command.openDashboard.title": "Abrir dashboard do Grafana",
+  "command.openActionTab.title": "Executar Action localmente",
+  "command.openSite.title": "Abrir site do MeasureSoftGram",
+  "command.registerRepo.title": "Cadastrar este repositório no MeasureSoftGram",
+  "config.serviceUrl.description": "URL base do serviço MeasureSoftGram.",
+  "config.productName.description": "Nome do produto cadastrado no serviço MeasureSoftGram.",
+  "config.organizationName.description": "Organização a usar quando a conta tiver mais de uma. Vazio = a primeira.",
+  "config.sonarProjectKey.description": "Chave do projeto no SonarCloud (opcional, usada pela Action).",
+  "config.workflowName.description": "Nome do workflow de build que a Action observa (on: workflow_run).",
+  "config.requestTimeoutMs.description": "Tempo limite de cada requisição ao serviço, em milissegundos.",
+  "config.grafanaAllowedHosts.description": "Hosts permitidos para os dashboards do Grafana. Vazio = qualquer host HTTPS.",
+  "viewsWelcome.notConfigured": "A extensão ainda não está configurada.\nInforme o token da sua conta no [MeasureSoftGram](https://msgram.lappis.rocks) e o nome do produto.\n[Configurar](command:msgram.openSettings)\n[Editar settings.json](command:workbench.action.openSettings?%5B%22msgram%22%5D)"
+}
