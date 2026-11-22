@@ -5,6 +5,7 @@ export function now(): string {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        hour12: false,
     });
 }
 
@@ -33,7 +34,13 @@ export function formatRelative(iso: string, now: Date = new Date()): string {
 export function formatAbsolute(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString(document.documentElement.lang || undefined, {dateStyle: 'short', timeStyle: 'short'});
+    return d.toLocaleString(document.documentElement.lang || undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 export type StatusColor = 'ok' | 'warn' | 'fail';
