@@ -6,7 +6,7 @@ Os workflows em `.github/workflows/` dependem dos secrets abaixo. Eles ficam em
 
 | Secret | Usado por | Para quê | Quem cria | Como validar |
 |---|---|---|---|---|
-| `GITHUB_TOKEN` | `msgram.yml`, `metrics.yml`, `release.yml`, `sonar.yml` | token automático do próprio workflow | ninguém (o GitHub fornece) | nada a fazer |
+| `GITHUB_TOKEN` | `msgram.yml`, `release.yml`, `sonar.yml` | token automático do próprio workflow | ninguém (o GitHub fornece) | nada a fazer |
 | `SONAR_TOKEN` | `test.yml` | enviar análise ao SonarCloud (`fga-eps-mds-1`) | admin do SonarCloud | o passo "Scanner do SonarCloud" termina verde |
 | `MSGRAMPLUGINTOKEN` | `msgram.yml` | token de API do MeasureSoftGram para publicar métricas deste repo | quem tem conta no produto "Measure" em `msgram.lappis.rocks` | o job `msg` termina verde e o produto recebe uma coleta nova |
 | `VSCE_PAT` | `release.yml` | publicar o `.vsix` no VS Code Marketplace como `MeasureSoftGram` | quem administra o publisher no [Marketplace](https://marketplace.visualstudio.com/manage) (Azure DevOps PAT com escopo *Marketplace: Manage*) | ao mesclar o PR de release do Release Please na `main`, o passo "Publicar no Visual Studio Marketplace" roda |
