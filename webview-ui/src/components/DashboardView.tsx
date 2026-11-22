@@ -1,4 +1,5 @@
 import React from 'react';
+import * as l10n from '@vscode/l10n';
 import type {ScoreData} from '../types';
 import {formatAbsolute, formatRelative, getCharStatus} from '../utils/helpers';
 
@@ -23,7 +24,7 @@ const Gauge: React.FC<{ value: number | null; status: ScoreStatus }> = ({value, 
     const c = 2 * Math.PI * r;
     const pct = value === null ? 0 : Math.max(0, Math.min(1, value));
     return (
-        <div className={`gauge ${status}`} role="img" aria-label={value === null ? 'sem score' : `TSQMI ${value.toFixed(2)}`}>
+        <div className={`gauge ${status}`} role="img" aria-label={value === null ? l10n.t('no score') : `TSQMI ${value.toFixed(2)}`}>
             <svg viewBox="0 0 110 110" width="110" height="110">
                 <circle className="gauge-track" cx="55" cy="55" r={r} fill="none" strokeWidth="9"/>
                 <circle
@@ -81,13 +82,13 @@ const CharacteristicRow: React.FC<{ c: Characteristic }> = ({c}) => {
                 <span className="char-name">{c.name}</span>
                 <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
                 <span className="char-goal">
-                    meta {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
+                    {l10n.t('goal')} {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
                 </span>
             </div>
             <div className="char-bar">
                 <div className={`char-fill ${status}`} style={{width: `${pct}%`}}/>
                 {c.goal !== null && (
-                    <div className="char-goal-mark" style={{left: `${Math.round(c.goal * 100)}%`}} title={`meta ${c.goal.toFixed(2)}`}/>
+                    <div className="char-goal-mark" style={{left: `${Math.round(c.goal * 100)}%`}} title={l10n.t('goal {0}', c.goal.toFixed(2))}/>
                 )}
             </div>
         </div>
@@ -109,20 +110,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
     const {avgGoal, worstChar} = goalSummary(scoreData?.characteristics ?? []);
 
-    const productLabel = productName || 'sem produto configurado';
+    const productLabel = productName || l10n.t('no product configured');
 
     const scoreStatus = scoreStatusOf(scoreData, score, avgGoal);
 
     let metaStatus: React.ReactNode = '—';
     if (scoreData && avgGoal !== null) {
         metaStatus = score >= avgGoal
-            ? <span className="chip ok">acima ✓</span>
-            : <span className="chip fail">abaixo ✗</span>;
+            ? <span className="chip ok">{l10n.t('above ✓')}</span>
+            : <span className="chip fail">{l10n.t('below ✗')}</span>;
     }
 
     const lastAnalysis = scoreData?.lastAnalysisAt
-        ? <span title={formatAbsolute(scoreData.lastAnalysisAt)}>última análise: {formatRelative(scoreData.lastAnalysisAt, now)}</span>
-        : <span>nunca analisado</span>;
+        ? <span title={formatAbsolute(scoreData.lastAnalysisAt)}>{l10n.t('last analysis: {0}', formatRelative(scoreData.lastAnalysisAt, now))}</span>
+        : <span>{l10n.t('never analyzed')}</span>;
 
     const showRetry = notifType === 'error' && !!notifText && !!onRetry;
     const showHero = !scoreLoading;
@@ -148,7 +149,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {scoreLoading && (
                 <div className="notif" style={{marginBottom: 14}}>
                     <i className="codicon codicon-loading codicon-modifier-spin" aria-hidden="true"/>
-                    <span>Carregando dados do produto...</span>
+                    <span>{l10n.t('Loading product data...')}</span>
                 </div>
             )}
 
@@ -157,8 +158,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="notif warn-n" id="notif-no-data">
                     <i className="codicon codicon-warning" aria-hidden="true"/>
                     <span>
-                        Este repositório ainda não possui métricas calculadas no MeasureSoftGram.
-                        Execute a Action para gerar os dados.
+                        {l10n.t('This repository does not have calculated metrics in MeasureSoftGram yet. Run the Action to generate data.')}
                     </span>
                 </div>
             )}
@@ -167,11 +167,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {!scoreLoading && hasGoal && worstChar && (
                 <div className="goal-warn show" id="goal-warn">
                     <div className="cw-title">
-                        <i className="codicon codicon-target" aria-hidden="true"/> Atenção: característica abaixo da meta
+                        <i className="codicon codicon-target" aria-hidden="true"/> {l10n.t('Warning: characteristic below goal')}
                     </div>
                     <div className="cw-desc">
-                        <strong className="warn-strong">{worstChar.name}</strong> está em{' '}
-                        {worstChar.value.toFixed(2)}, abaixo da meta {worstChar.goal.toFixed(2)} definida pela equipe.
+                        {l10n.t('{0} is at {1}, below the team goal of {2}.', worstChar.name, worstChar.value.toFixed(2), worstChar.goal.toFixed(2))}
                     </div>
                 </div>
             )}
@@ -186,7 +185,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <span>{notifText}</span>
                     {showRetry && (
                         <button className="btn btn-small" type="button" onClick={onRetry} style={{marginLeft: 'auto'}}>
-                            <i className="codicon codicon-refresh" aria-hidden="true"/> Tentar de novo
+                            <i className="codicon codicon-refresh" aria-hidden="true"/> {l10n.t('Try again')}
                         </button>
                     )}
                 </div>
@@ -197,14 +196,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div className="score-hero">
                     <Gauge value={scoreData && !scoreData.noData ? score : null} status={scoreStatus}/>
                     <div className="hero-right">
-                        <div className="hero-lbl">TSQMI do produto</div>
+                        <div className="hero-lbl">{l10n.t('Product TSQMI')}</div>
                         <div className="hero-desc">
-                            Indicador multidimensional da qualidade, de 0 a 1, calculado a partir das características abaixo.
+                            {l10n.t('Multidimensional quality indicator, from 0 to 1, calculated from the characteristics below.')}
                         </div>
                         <div className="hero-meta">
                             {scoreData && !hasGoal
-                                ? <span className="chip muted">sem meta definida para este produto</span>
-                                : <>meta da release: <strong>{avgGoal !== null ? avgGoal.toFixed(2) : '—'}</strong> · {metaStatus}</>}
+                                ? <span className="chip muted">{l10n.t('no goal defined for this product')}</span>
+                                : <>{l10n.t('release goal:')} <strong>{avgGoal !== null ? avgGoal.toFixed(2) : '—'}</strong> · {metaStatus}</>}
                         </div>
                     </div>
                 </div>
@@ -213,7 +212,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Características */}
             {showHero && scoreData && scoreData.characteristics.length > 0 && (
                 <div className="sec-title" style={{marginTop: 4}}>
-                    <i className="codicon codicon-list-tree" aria-hidden="true"/> Características
+                    <i className="codicon codicon-list-tree" aria-hidden="true"/> {l10n.t('Characteristics')}
                 </div>
             )}
             <div id="chars-dashboard">

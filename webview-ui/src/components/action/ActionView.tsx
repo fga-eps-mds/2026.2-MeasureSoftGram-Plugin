@@ -1,4 +1,5 @@
 import React from 'react';
+import * as l10n from '@vscode/l10n';
 import {YamlEditor} from './YamlEditor.tsx';
 import {SaveButton} from './SaveButton.tsx';
 import {CopyButton} from './CopyButton.tsx';
@@ -17,23 +18,23 @@ function blockedMessage(b: ActionBlocked): React.ReactNode {
         case 'docker_missing':
             return (
                 <>
-                    O Docker é pré-requisito para executar a Action localmente e não foi encontrado.{' '}
-                    <a href={DOCKER_INSTALL_URL} target="_blank" rel="noreferrer">Instale o Docker</a> e tente de novo.
+                    {l10n.t('Docker is required to run the Action locally and was not found.')}{' '}
+                    <a href={DOCKER_INSTALL_URL} target="_blank" rel="noreferrer">{l10n.t('Install Docker')}</a> {l10n.t('and try again.')}
                 </>
             );
         case 'docker_stopped':
             return (
                 <>
-                    O Docker está instalado mas não respondeu. Inicie o Docker e tente de novo.
+                    {l10n.t('Docker is installed but did not respond. Start Docker and try again.')}
                     {b.detail && <span className="blocked-detail"> ({b.detail})</span>}
                 </>
             );
         case 'already_running':
-            return <>Já existe uma execução em andamento. Aguarde terminar ou clique em Parar.</>;
+            return <>{l10n.t('An execution is already running. Wait for it to finish or click Stop.')}</>;
         case 'no_workspace':
-            return <>Abra uma pasta no VS Code antes de executar.{b.detail && <span className="blocked-detail"> ({b.detail})</span>}</>;
+            return <>{l10n.t('Open a folder in VS Code before running.')}{b.detail && <span className="blocked-detail"> ({b.detail})</span>}</>;
         default:
-            return <>Não foi possível executar.{b.detail && <span className="blocked-detail"> ({b.detail})</span>}</>;
+            return <>{l10n.t('Could not run.')}{b.detail && <span className="blocked-detail"> ({b.detail})</span>}</>;
     }
 }
 
@@ -82,12 +83,12 @@ export const ActionView: React.FC<ActionViewProps> = ({
             <div className="notif" style={{marginBottom: 12}}>
                 <i className="codicon codicon-info"/>
                 <span>
-                    Edite o <strong>msgram.yml</strong> abaixo.
+                    {l10n.t('Edit msgram.yml below.')}
                     {yamlExists !== null && (
                         <span className={`yaml-origin ${yamlExists ? 'existing' : 'new'}`} data-testid="yaml-origin">
                             {yamlExists
-                                ? ' Arquivo existente em .github/workflows/msgram.yml: salvar sobrescreve.'
-                                : ' Novo arquivo: será criado em .github/workflows/msgram.yml.'}
+                                ? ` ${l10n.t('Existing file at .github/workflows/msgram.yml: saving overwrites it.')}`
+                                : ` ${l10n.t('New file: will be created at .github/workflows/msgram.yml.')}`}
                         </span>
                     )}
                 </span>

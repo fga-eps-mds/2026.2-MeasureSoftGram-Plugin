@@ -1,4 +1,5 @@
 import React from 'react';
+import * as l10n from '@vscode/l10n';
 import type { GrafanaDashboard } from '../types';
 
 interface GrafanaViewProps {
@@ -32,19 +33,19 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
         <div>
           <div className="view-title">
             <i className="codicon codicon-graph-line" aria-hidden="true" />
-            <span>Grafana Dashboards</span>
+            <span>{l10n.t('Grafana Dashboards')}</span>
           </div>
           <div className="view-sub">
             {iframeUrl
               ? iframeTitle
               : hasContext
-                ? 'Selecione um dashboard para visualizar'
-                : 'Carregue o produto no Painel primeiro'}
+                ? l10n.t('Select a dashboard to view')
+                : l10n.t('Load the product in Panel first')}
           </div>
         </div>
         {showFrame && (
           <button className="btn sec" onClick={onBack}>
-            <i className="codicon codicon-arrow-left" /> Voltar
+            <i className="codicon codicon-arrow-left" /> {l10n.t('Back')}
           </button>
         )}
       </div>
@@ -52,7 +53,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
       {loading && (
         <div className="notif" style={{ marginBottom: 14 }}>
           <i className="codicon codicon-loading codicon-modifier-spin run-anim" />
-          <span>Carregando...</span>
+          <span>{l10n.t('Loading...')}</span>
         </div>
       )}
 
@@ -67,8 +68,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
         <div className="notif warn-n">
           <i className="codicon codicon-info" />
           <span>
-            Nenhum produto carregado. Abra a aba <strong>Painel</strong> e aguarde o
-            carregamento das métricas antes de acessar os dashboards.
+            {l10n.t('No product loaded. Open the Panel tab and wait for metrics to load before accessing dashboards.')}
           </span>
         </div>
       )}
@@ -76,7 +76,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
       {showList && hasContext && dashboards.length === 0 && !error && (
         <div className="notif">
           <i className="codicon codicon-info" />
-          <span>Nenhum dashboard encontrado no Grafana.</span>
+          <span>{l10n.t('No dashboards found in Grafana.')}</span>
         </div>
       )}
 
@@ -98,7 +98,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
                 {d.has_repo_selector && (
                   <span className="grafana-card-sub">
                     <i className="codicon codicon-repo" aria-hidden="true" />
-                    {' '}filtrado por repositório
+                    {' '}{l10n.t('filtered by repository')}
                   </span>
                 )}
               </span>

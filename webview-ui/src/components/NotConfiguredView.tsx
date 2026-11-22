@@ -1,4 +1,5 @@
 import React from 'react';
+import * as l10n from '@vscode/l10n';
 import type {MissingSetting} from '../types';
 
 interface NotConfiguredViewProps {
@@ -10,11 +11,16 @@ interface NotConfiguredViewProps {
     onRegisterRepo?: () => void;
 }
 
-const LABELS: Record<MissingSetting, string> = {
-    token: 'Token do MeasureSoftGram',
-    serviceUrl: 'URL do serviço',
-    productName: 'Nome do produto',
-};
+function labelFor(setting: MissingSetting): string {
+    switch (setting) {
+        case 'token':
+            return l10n.t('MeasureSoftGram Token');
+        case 'serviceUrl':
+            return l10n.t('Service URL');
+        case 'productName':
+            return l10n.t('Product Name');
+    }
+}
 
 /**
  * Tela exibida no lugar do painel quando falta configuração.
@@ -26,10 +32,10 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
             <div>
                 <div className="view-title">
                     <i className="codicon codicon-gear" aria-hidden="true"/>
-                    <span>Extensão não está configurada</span>
+                    <span>{l10n.t('Extension is not configured')}</span>
                 </div>
                 <div className="view-sub">
-                    Informe os dados abaixo para ver a qualidade real do seu produto.
+                    {l10n.t('Enter the details below to view the real quality of your product.')}
                 </div>
             </div>
         </div>
@@ -38,8 +44,7 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
             <div className="notif warn-n" style={{marginBottom: 14}} data-testid="unregistered-repo">
                 <i className="codicon codicon-repo" aria-hidden="true"/>
                 <span>
-                    O repositório <strong>{unregisteredRepo}</strong> não está cadastrado em nenhum produto desta conta.
-                    Cadastre-o com um clique, ou informe abaixo o produto onde ele está.
+                    {l10n.t('Repository {0} is not registered in any product of this account. Register it with one click, or enter the product below.', unregisteredRepo)}
                 </span>
             </div>
         )}
@@ -47,7 +52,7 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
         {unregisteredRepo && onRegisterRepo && (
             <div className="nc-actions">
                 <button className="btn" type="button" onClick={onRegisterRepo} data-testid="register-repo">
-                    <i className="codicon codicon-cloud-upload" aria-hidden="true"/> Cadastrar automaticamente
+                    <i className="codicon codicon-cloud-upload" aria-hidden="true"/> {l10n.t('Register automatically')}
                 </button>
             </div>
         )}
@@ -55,29 +60,29 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
         <div className="notif" style={{marginBottom: 14}}>
             <i className="codicon codicon-info" aria-hidden="true"/>
             <span>
-                Falta{missing.length > 1 ? 'm' : ''}:
+                {l10n.t('Missing:')}
             </span>
         </div>
 
         <ul className="nc-list" id="nc-missing">
             {missing.map((m) => (
                 <li key={m} className="nc-item">
-                    <i className="codicon codicon-warning" aria-hidden="true"/> {LABELS[m]}
+                    <i className="codicon codicon-warning" aria-hidden="true"/> {labelFor(m)}
                 </li>
             ))}
         </ul>
 
         <div className="nc-actions">
             <button className="btn" type="button" onClick={onOpenSettings}>
-                <i className="codicon codicon-settings-gear" aria-hidden="true"/> Abrir Settings
+                <i className="codicon codicon-settings-gear" aria-hidden="true"/> {l10n.t('Open Settings')}
             </button>
             <button className="btn btn-secondary" type="button" onClick={onOpenVscodeSettings}>
-                <i className="codicon codicon-file-code" aria-hidden="true"/> Editar settings.json
+                <i className="codicon codicon-file-code" aria-hidden="true"/> {l10n.t('Edit settings.json')}
             </button>
         </div>
 
         <div className="nc-help">
-            O token é gerado na sua conta do MeasureSoftGram e fica guardado no Secret Storage do VS Code.
+            {l10n.t('The token is generated in your MeasureSoftGram account and stored in VS Code Secret Storage.')}
         </div>
     </div>
 );
