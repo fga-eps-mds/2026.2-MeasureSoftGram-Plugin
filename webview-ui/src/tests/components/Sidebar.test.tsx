@@ -99,6 +99,22 @@ describe('Sidebar', () => {
             render(<Sidebar {...DEFAULT_PROPS} repos={REPOS} scoreError={true} selectedRepoPk={1}/>);
             expect(screen.getByRole('combobox')).toHaveValue('');
         });
+
+        it('renderiza seletor de organização quando há mais de uma e chama onSelectOrg', () => {
+            const onSelectOrg = vi.fn();
+            render(
+                <Sidebar
+                    {...DEFAULT_PROPS}
+                    organizations={[{id: 1, name: 'Org A'}, {id: 2, name: 'Org B'}]}
+                    selectedOrgPk={1}
+                    onSelectOrg={onSelectOrg}
+                />,
+            );
+            const orgSelect = document.getElementById('org-select') as HTMLSelectElement;
+            expect(orgSelect).toBeInTheDocument();
+            fireEvent.change(orgSelect, {target: {value: '2'}});
+            expect(onSelectOrg).toHaveBeenCalledWith(2);
+        });
     });
 
     describe('score', () => {

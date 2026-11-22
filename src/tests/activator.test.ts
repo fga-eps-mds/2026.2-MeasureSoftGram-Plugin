@@ -89,4 +89,40 @@ suite('activator — activate()', () => {
     test('passa a StatusBar para Panel.render', () => {
         assert.ok(panelReceivedStatusBar !== null);
     });
+
+    test('msgram.clearTokens apaga os segredos ao confirmar e ignora ao cancelar', async () => {
+        const deleted: string[] = [];
+        const infos: string[] = [];
+        let choice: string | undefined;
+        const cmds: Record<string, (...a: any[]) => any> = {};
+        const localVscode = {
+            commands: {
+                registerCommand: (id: string, fn: (...a: any[]) => any) => {
+                    cmds[id] = fn;
+                    return {dispose() {}};
+                },
+            },
+            window: {
+                registerWebviewViewProvider: () => ({dispose() {}}),
+                showWarningMessage: async () => choice,
+                showInformationMessage: async (msg: string) => { infos.push(msg); return undefined; },
+            },
+        };
+        const ctx = {
+            subscriptions: [] as {dispose(): void}[],
+            secrets: {delete: async (k: string) => { deleted.push(k); }},
+        };
+        class SB { dispose() {} }
+        class Side { static viewType = 'v'; }
+        activate(ctx, localVscode, {render: () => ({})}, Side, SB);
+
+        choice = undefined;
+        await cmds['msgram.clearTokens']();
+        assert.deepStrictEqual(deleted, []);
+
+        choice = 'Remove';
+        await cmds['msgram.clearTokens']();
+        assert.deepStrictEqual(deleted, ['msgram.token', 'msgram.githubToken']);
+        assert.strictEqual(infos.length, 1);
+    });
 });

@@ -319,4 +319,20 @@ suite('QualityTreeProvider — variações da árvore', () => {
         assert.strictEqual(last.label, 'Never analyzed');
         assert.strictEqual(last.tooltip, undefined);
     });
+
+    test('última análise formata minutos, horas, 1 dia e vários dias', async () => {
+        const cases: [number, string][] = [
+            [5 * 60_000, 'Last analysis 5 min ago'],
+            [3 * 3_600_000, 'Last analysis 3 h ago'],
+            [25 * 3_600_000, 'Last analysis 1 day ago'],
+            [72 * 3_600_000, 'Last analysis 3 days ago'],
+        ];
+        for (const [agoMs, expected] of cases) {
+            const iso = new Date(Date.now() - agoMs).toISOString();
+            const {tree} = withScore({...SCORE, lastAnalysisAt: iso});
+            await tree.refresh();
+            const last = (await tree.getChildren()).find((n) => n.kind === 'lastAnalysis')!;
+            assert.strictEqual(last.label, expected);
+        }
+    });
 });

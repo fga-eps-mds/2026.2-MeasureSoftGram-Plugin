@@ -161,4 +161,14 @@ describe('ActionView', () => {
         render(<ActionView {...defaultProps} blocked={null}/>);
         expect(screen.queryByTestId('action-blocked')).not.toBeInTheDocument();
     });
+
+    it('mostra aviso de pasta e erro genérico no blocked', () => {
+        const {rerender} = render(<ActionView {...defaultProps} blocked={{reason: 'no_workspace', detail: 'sem pasta'}}/>);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/Open a folder in VS Code/);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent('sem pasta');
+
+        rerender(<ActionView {...defaultProps} blocked={{reason: 'other' as never, detail: 'falha'}}/>);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/Could not run/);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent('falha');
+    });
 });
