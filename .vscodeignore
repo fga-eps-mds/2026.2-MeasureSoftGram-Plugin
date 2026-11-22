@@ -22,7 +22,6 @@ tsconfig.json
 .idea/**
 .vscode-test.mjs
 eslint.config.mjs
-parser.py
 requirements.txt
 sonar-project.properties
 webview-ui/eslint.config.js
