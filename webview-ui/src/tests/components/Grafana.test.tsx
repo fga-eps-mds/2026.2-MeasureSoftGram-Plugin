@@ -30,7 +30,7 @@ describe('GrafanaView', () => {
 
         it('indica quais dashboards são filtrados por repositório', () => {
             render(<GrafanaView {...base} />);
-            expect(screen.getAllByText(/filtrado por repositório/)).toHaveLength(1);
+            expect(screen.getAllByText(/filtered by repository/)).toHaveLength(1);
         });
 
         it('clicar em um cartão chama onSelectDashboard com o uid', () => {
@@ -40,21 +40,21 @@ describe('GrafanaView', () => {
             expect(onSelectDashboard).toHaveBeenCalledWith('por-repo');
         });
 
-        it('mostra "Selecione um dashboard" no subtítulo', () => {
+        it('mostra "Select a dashboard" no subtítulo', () => {
             render(<GrafanaView {...base} />);
-            expect(screen.getByText(/Selecione um dashboard/)).toBeInTheDocument();
+            expect(screen.getByText(/Select a dashboard/)).toBeInTheDocument();
         });
 
         it('mostra aviso quando a lista está vazia', () => {
             render(<GrafanaView {...base} dashboards={[]}/>);
-            expect(screen.getByText(/Nenhum dashboard encontrado/)).toBeInTheDocument();
+            expect(screen.getByText(/No dashboards found/)).toBeInTheDocument();
         });
     });
 
     describe('estados', () => {
-        it('mostra "Carregando..." e esconde a lista durante o loading', () => {
+        it('mostra "Loading..." e esconde a lista durante o loading', () => {
             render(<GrafanaView {...base} loading={true}/>);
-            expect(screen.getByText(/Carregando/)).toBeInTheDocument();
+            expect(screen.getByText(/Loading/)).toBeInTheDocument();
             expect(document.querySelectorAll('.grafana-card')).toHaveLength(0);
         });
 
@@ -63,10 +63,10 @@ describe('GrafanaView', () => {
             expect(screen.getByText(/não permitido/)).toBeInTheDocument();
         });
 
-        it('sem contexto pede para abrir o Painel primeiro e não lista dashboards', () => {
+        it('sem contexto pede para abrir o Panel primeiro e não lista dashboards', () => {
             render(<GrafanaView {...base} hasContext={false}/>);
-            expect(screen.getByText(/Carregue o produto no Painel primeiro/)).toBeInTheDocument();
-            expect(screen.getByText(/Nenhum produto carregado/)).toBeInTheDocument();
+            expect(screen.getByText(/Load the product in Panel first/)).toBeInTheDocument();
+            expect(screen.getByText(/No product loaded/)).toBeInTheDocument();
             expect(document.querySelectorAll('.grafana-card')).toHaveLength(0);
         });
     });
@@ -88,10 +88,10 @@ describe('GrafanaView', () => {
             expect(document.querySelectorAll('.grafana-card')).toHaveLength(0);
         });
 
-        it('botão Voltar chama onBack', () => {
+        it('botão Back chama onBack', () => {
             const onBack = vi.fn();
             render(<GrafanaView {...withFrame} onBack={onBack}/>);
-            fireEvent.click(screen.getByRole('button', {name: /voltar/i}));
+            fireEvent.click(screen.getByRole('button', {name: /back/i}));
             expect(onBack).toHaveBeenCalledTimes(1);
         });
 

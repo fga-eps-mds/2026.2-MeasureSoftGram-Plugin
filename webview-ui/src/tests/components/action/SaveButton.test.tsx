@@ -9,9 +9,9 @@ describe('SaveButton', () => {
         onSave.mockClear();
     });
 
-    it('deve renderizar o botão com texto "Salvar"', () => {
+    it('deve renderizar o botão com texto "Save"', () => {
         render(<SaveButton onSave={onSave} savedFeedback={false}/>);
-        expect(screen.getByRole('button')).toHaveTextContent('Salvar');
+        expect(screen.getByRole('button')).toHaveTextContent('Save');
     });
 
     it('deve chamar onSave ao clicar no botão', () => {
@@ -22,17 +22,17 @@ describe('SaveButton', () => {
 
     it('não deve exibir o feedback quando savedFeedback é false', () => {
         render(<SaveButton onSave={onSave} savedFeedback={false}/>);
-        expect(screen.queryByText(/Salvo no seu perfil/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Saved to your profile/i)).not.toBeInTheDocument();
     });
 
     it('deve exibir o feedback quando savedFeedback é true', () => {
         render(<SaveButton onSave={onSave} savedFeedback={true}/>);
-        expect(screen.getByText(/Salvo no seu perfil/i)).toBeInTheDocument();
+        expect(screen.getByText(/Saved to your profile/i)).toBeInTheDocument();
     });
 
     it('deve exibir ícone de check no feedback quando savedFeedback é true', () => {
         render(<SaveButton onSave={onSave} savedFeedback={true}/>);
-        const feedback = screen.getByText(/Salvo no seu perfil/i).closest('span');
+        const feedback = screen.getByText(/Saved to your profile/i).closest('span');
         expect(feedback?.querySelector('i')).toHaveClass('codicon-check');
     });
 

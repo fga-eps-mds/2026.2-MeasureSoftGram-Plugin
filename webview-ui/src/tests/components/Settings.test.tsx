@@ -82,16 +82,16 @@ describe('SettingsView', () => {
             expect(input('inp-workflowname').value).toBe('CI');
         });
 
-        it('token salvo aparece como "salvo ✓" com campo vazio, sem o valor', () => {
+        it('token salvo aparece como "saved ✓" com campo vazio, sem o valor', () => {
             render(<SettingsView initialData={FULL} onSave={onSave} onClearSecret={onClearSecret} savedFeedback={false}/>);
             expect(input('inp-msgram-token').value).toBe('');
-            expect(screen.getByTestId('msgram-token-status')).toHaveTextContent(/salvo/i);
-            expect(input('inp-msgram-token').placeholder).toMatch(/salvo/i);
+            expect(screen.getByTestId('msgram-token-status')).toHaveTextContent(/saved/i);
+            expect(input('inp-msgram-token').placeholder).toMatch(/saved/i);
         });
 
-        it('token não salvo mostra "não configurado"', () => {
+        it('token não salvo mostra "not configured"', () => {
             render(<SettingsView initialData={FULL} onSave={onSave} onClearSecret={onClearSecret} savedFeedback={false}/>);
-            expect(screen.getByTestId('github-token-status')).toHaveTextContent(/não configurado/i);
+            expect(screen.getByTestId('github-token-status')).toHaveTextContent(/not configured/i);
         });
 
         it('botão "remover" só aparece para token salvo e envia onClearSecret', () => {
@@ -144,7 +144,7 @@ describe('SettingsView', () => {
     describe('salvar', () => {
         it('chama onSave com os campos não sensíveis e sem tokens quando não digitados', () => {
             render(<SettingsView initialData={FULL} onSave={onSave} onClearSecret={onClearSecret} savedFeedback={false}/>);
-            fireEvent.click(screen.getByRole('button', {name: /salvar/i}));
+            fireEvent.click(screen.getByRole('button', {name: /save/i}));
             expect(onSave).toHaveBeenCalledTimes(1);
             const payload = onSave.mock.calls[0][0];
             expect(payload).toMatchObject({
@@ -163,7 +163,7 @@ describe('SettingsView', () => {
         it('inclui o token só quando foi digitado', () => {
             render(<SettingsView initialData={FULL} onSave={onSave} onClearSecret={onClearSecret} savedFeedback={false}/>);
             fireEvent.change(input('inp-github-token'), {target: {value: 'ghp_novo'}});
-            fireEvent.click(screen.getByRole('button', {name: /salvar/i}));
+            fireEvent.click(screen.getByRole('button', {name: /save/i}));
             const payload = onSave.mock.calls[0][0];
             expect(payload.githubToken).toBe('ghp_novo');
             expect(payload.msgramServiceToken).toBeUndefined();
@@ -172,7 +172,7 @@ describe('SettingsView', () => {
         it('limpa os campos de token depois de salvar', () => {
             render(<SettingsView onSave={onSave} onClearSecret={onClearSecret} savedFeedback={false}/>);
             fireEvent.change(input('inp-msgram-token'), {target: {value: 'tok'}});
-            fireEvent.click(screen.getByRole('button', {name: /salvar/i}));
+            fireEvent.click(screen.getByRole('button', {name: /save/i}));
             expect(input('inp-msgram-token').value).toBe('');
         });
     });
@@ -183,10 +183,10 @@ describe('SettingsView', () => {
             expect(document.getElementById('save-fb')).not.toBeInTheDocument();
         });
 
-        it('exibe "Configurações salvas" quando savedFeedback é true', () => {
+        it('exibe "Settings saved" quando savedFeedback é true', () => {
             render(<SettingsView onSave={onSave} onClearSecret={onClearSecret} savedFeedback={true}/>);
             expect(document.getElementById('save-fb')).toBeInTheDocument();
-            expect(screen.getByText(/salvas/i)).toBeInTheDocument();
+            expect(screen.getByText(/saved/i)).toBeInTheDocument();
         });
 
         it('explica onde cada coisa é guardada', () => {

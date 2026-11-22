@@ -98,7 +98,7 @@ suite('fetchRepositories', () => {
   test('lança erro quando nenhuma organização encontrada', async () => {
     const {server, baseUrl} = await mockServer((_req, res) => json(res, {count: 0, next: null, results: []}));
     try {
-      await assert.rejects(fetchRepositories(base(baseUrl)), /Nenhuma organização encontrada/);
+      await assert.rejects(fetchRepositories(base(baseUrl)), /No organization found/);
     } finally {
       server.close();
     }
@@ -112,7 +112,7 @@ suite('fetchRepositories', () => {
       json(res, {count: 1, next: null, results: [{id: 99, name: 'OutroProduto'}]});
     });
     try {
-      await assert.rejects(fetchRepositories(base(baseUrl)), /Produto "MeasureSoftGram" não encontrado/);
+      await assert.rejects(fetchRepositories(base(baseUrl)), /Product "MeasureSoftGram" not found/);
     } finally {
       server.close();
     }

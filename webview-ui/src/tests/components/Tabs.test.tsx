@@ -4,8 +4,8 @@ import {Tabs} from '../../components/Tabs';
 import type {TabName} from '../../types';
 
 const TabsTest: { id: TabName; label: string; icon: string }[] = [
-    {id: 'dashboard', label: 'Painel', icon: 'codicon-dashboard'},
-    {id: 'settings', label: 'Config', icon: 'codicon-settings-gear'},
+    {id: 'dashboard', label: 'Panel', icon: 'codicon-dashboard'},
+    {id: 'settings', label: 'Settings', icon: 'codicon-settings-gear'},
     {id: 'action', label: 'Action', icon: 'codicon-file-code'},
 ];
 
@@ -18,7 +18,7 @@ describe('Tabs', () => {
 
     it('deve renderizar as 3 abas', () => {
         render(<Tabs active="dashboard" onSelect={onSelect}/>);
-        expect(screen.getAllByText(/Painel|Config|Action/)).toHaveLength(3);
+        expect(screen.getAllByText(/Panel|Settings|Action/)).toHaveLength(3);
     });
 
     it.each(TabsTest)('deve renderizar o label "$label" da aba "$id"', ({label}) => {
@@ -62,7 +62,7 @@ describe('Tabs', () => {
 
     it('deve chamar onSelect uma vez por clique', () => {
         render(<Tabs active="dashboard" onSelect={onSelect}/>);
-        fireEvent.click(screen.getByText(/Config/));
+        fireEvent.click(screen.getByText(/Settings/));
         fireEvent.click(screen.getByText(/Action/));
         expect(onSelect).toHaveBeenCalledTimes(2);
     });

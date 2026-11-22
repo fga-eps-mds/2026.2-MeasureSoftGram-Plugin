@@ -21,14 +21,14 @@ describe('OutputView', () => {
         vi.clearAllMocks();
     });
 
-    it('deve renderizar o estado inicial "Aguardando execução..." quando não há linhas', () => {
+    it('deve renderizar o estado inicial "Waiting for execution..." quando não há linhas', () => {
         render(<OutputView lines={[]}/>);
-        expect(screen.getByText('Aguardando execução...')).toBeInTheDocument();
+        expect(screen.getByText('Waiting for execution...')).toBeInTheDocument();
     });
 
-    it('não deve renderizar "Aguardando execução..." quando há linhas', () => {
+    it('não deve renderizar "Waiting for execution..." quando há linhas', () => {
         render(<OutputView lines={makeLines([{text: 'algo'}])}/>);
-        expect(screen.queryByText('Aguardando execução...')).not.toBeInTheDocument();
+        expect(screen.queryByText('Waiting for execution...')).not.toBeInTheDocument();
     });
 
     it('deve renderizar uma linha com texto e horário corretos', () => {

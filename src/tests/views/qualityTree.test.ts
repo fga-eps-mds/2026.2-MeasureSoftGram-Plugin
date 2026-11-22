@@ -85,7 +85,7 @@ suite('QualityTreeProvider — estados', () => {
         assert.strictEqual(root[0].label, 'Measure');
         assert.strictEqual(root[0].description, 'EPS/MDS');
         assert.strictEqual(root[2].label, 'TSQMI 0.86');
-        assert.ok(root[2].description?.includes('meta 0.80'));
+        assert.ok(root[2].description?.includes('goal 0.80'));
         assert.strictEqual(statusBar.calls[statusBar.calls.length - 1], 'score');
     });
 
@@ -95,7 +95,7 @@ suite('QualityTreeProvider — estados', () => {
         const chars = (await tree.getChildren()).find((n) => n.kind === 'characteristics')!;
         const kids = await tree.getChildren(chars);
         assert.deepStrictEqual(labels(kids), ['Reliability', 'Maintainability']);
-        assert.strictEqual(kids[0].description, '0.57 / meta 0.80');
+        assert.strictEqual(kids[0].description, '0.57 / goal 0.80');
         assert.strictEqual((kids[0].icon as any).id, 'warning');
         assert.strictEqual((kids[1].icon as any).id, 'pass');
     });
@@ -106,25 +106,25 @@ suite('QualityTreeProvider — estados', () => {
         const dash = (await tree.getChildren()).find((n) => n.kind === 'dashboards')!;
         const kids = await tree.getChildren(dash);
         assert.strictEqual(kids[0].label, 'Visão Geral');
-        assert.deepStrictEqual(kids[0].command, {command: 'msgram.openDashboard', title: 'Abrir dashboard', arguments: ['u1']});
+        assert.deepStrictEqual(kids[0].command, {command: 'msgram.openDashboard', title: 'Open dashboard', arguments: ['u1']});
     });
 
-    test('erro de autenticação vira nó de erro com "Tentar de novo"', async () => {
+    test('erro de autenticação vira nó de erro com "Try again"', async () => {
         const {tree, statusBar} = makeTree({token: 'tok', productName: 'Measure', repos: async () => { throw new HttpError('HTTP 401', 'auth', 401); }});
         await tree.refresh();
         assert.strictEqual(tree.state, 'error');
         const root = await tree.getChildren();
         assert.strictEqual(root[0].kind, 'error');
-        assert.strictEqual(root[0].label, 'Token inválido ou expirado');
+        assert.strictEqual(root[0].label, 'Invalid or expired token');
         assert.strictEqual(root[0].command?.command, 'msgram.refresh');
         assert.ok(statusBar.calls.includes('error'));
     });
 
-    test('noData: nó "Sem métricas calculadas" e status bar sem dados', async () => {
+    test('noData: nó "No calculated metrics" e status bar sem dados', async () => {
         const {tree, statusBar} = makeTree({token: 'tok', productName: 'Measure', score: async () => ({...SCORE, noData: true, score: 0, characteristics: []})});
         await tree.refresh();
         const root = await tree.getChildren();
-        assert.ok(root.some((n) => n.label === 'Sem métricas calculadas'));
+        assert.ok(root.some((n) => n.label === 'No calculated metrics'));
         assert.ok(statusBar.calls.includes('noData'));
     });
 });
@@ -206,7 +206,7 @@ suite('QualityTreeProvider — seleção', () => {
         assert.strictEqual(tree.state, 'unregistered');
         assert.strictEqual(contextKeys['msgram.configured'], true, 'a árvore mostra o aviso, não a tela de boas-vindas');
         const root = await tree.getChildren();
-        assert.ok(root[0].label.includes('"x"') && root[0].label.includes('não está cadastrado'));
+        assert.ok(root[0].label.includes('"x"') && root[0].label.includes('is not registered'));
         assert.ok(root.some((n) => n.command?.command === 'msgram.openSite'));
         assert.ok(root.some((n) => n.command?.command === 'msgram.registerRepo'));
         assert.ok(root.some((n) => n.command?.command === 'msgram.openSettings'));
@@ -224,16 +224,16 @@ suite('QualityTreeProvider — variações da árvore', () => {
     const color = (n: QualityNode) => (n.icon as any)?.color?.id;
     const withScore = (score: any) => makeTree({token: 'tok', productName: 'Measure', score: async () => score});
 
-    test('antes da primeira carga mostra "Carregando…"', () => {
+    test('antes da primeira carga mostra "Loading…"', () => {
         const {tree} = makeTree();
-        assert.deepStrictEqual(labels(tree.rootNodes()), ['Carregando…']);
+        assert.deepStrictEqual(labels(tree.rootNodes()), ['Loading…']);
     });
 
-    test('erro que não é HttpError: "Não foi possível carregar", tipo other e o nó de ações', async () => {
+    test('erro que não é HttpError: "Could not load", tipo other e o nó de ações', async () => {
         const {tree} = makeTree({token: 'tok', productName: 'Measure', repos: () => Promise.reject('boom')});
         await tree.refresh();
         const root = await tree.getChildren();
-        assert.strictEqual(root[0].label, 'Não foi possível carregar');
+        assert.strictEqual(root[0].label, 'Could not load');
         assert.strictEqual(root[0].description, 'other');
         assert.strictEqual(root[0].tooltip, 'boom');
         assert.deepStrictEqual(root.map((n) => n.kind), ['error', 'actions']);
@@ -245,7 +245,7 @@ suite('QualityTreeProvider — variações da árvore', () => {
         await tree.refresh();
         const [product, repo] = await tree.getChildren();
         assert.strictEqual(product.command, undefined);
-        assert.ok(!product.tooltip?.includes('trocar de organização'));
+        assert.ok(!product.tooltip?.includes('switch organization'));
         assert.strictEqual(repo.description, undefined);
     });
 
@@ -254,17 +254,17 @@ suite('QualityTreeProvider — variações da árvore', () => {
         await tree.refresh();
         const [product, repo] = await tree.getChildren();
         assert.strictEqual(product.command?.command, 'msgram.selectOrganization');
-        assert.ok(product.tooltip?.includes('Clique para trocar de organização.'));
-        assert.strictEqual(repo.description, '2 repositórios');
+        assert.ok(product.tooltip?.includes('Click to switch organization.'));
+        assert.strictEqual(repo.description, '2 repositories');
     });
 
-    test('produto sem repositórios: nó "Produto sem repositórios" e status bar sem dados', async () => {
+    test('produto sem repositórios: nó "Product has no repositories" e status bar sem dados', async () => {
         const {tree, statusBar} = makeTree({token: 'tok', productName: 'Measure', repos: async () => ({...CTX, repos: []})});
         await tree.refresh();
         assert.strictEqual(tree.state, 'ready');
         const root = await tree.getChildren();
         assert.deepStrictEqual(root.map((n) => n.kind), ['product', 'noData', 'dashboards', 'actions']);
-        assert.strictEqual(root[1].label, 'Produto sem repositórios');
+        assert.strictEqual(root[1].label, 'Product has no repositories');
         assert.ok(statusBar.calls.includes('noData'));
     });
 
@@ -272,7 +272,7 @@ suite('QualityTreeProvider — variações da árvore', () => {
         const {tree} = makeTree({token: 'tok', productName: 'Measure'});
         await tree.refresh();
         const score = (await tree.getChildren()).find((n) => n.kind === 'score')!;
-        assert.strictEqual(score.description, 'meta 0.80 ✓');
+        assert.strictEqual(score.description, 'goal 0.80 ✓');
         assert.strictEqual(color(score), 'charts.green');
     });
 
@@ -280,21 +280,21 @@ suite('QualityTreeProvider — variações da árvore', () => {
         const {tree} = withScore({...SCORE, score: 0.5});
         await tree.refresh();
         const score = (await tree.getChildren()).find((n) => n.kind === 'score')!;
-        assert.strictEqual(score.description, 'meta 0.80 ✗');
+        assert.strictEqual(score.description, 'goal 0.80 ✗');
         assert.strictEqual(color(score), 'charts.red');
     });
 
-    test('sem metas: TSQMI "sem meta" em amarelo e características sem meta em verde', async () => {
+    test('sem metas: TSQMI "no goal" em amarelo e características sem meta em verde', async () => {
         const chars = SCORE.characteristics.map((c) => ({...c, goal: null}));
         const {tree} = withScore({...SCORE, hasGoal: false, characteristics: chars});
         await tree.refresh();
         const root = await tree.getChildren();
         const score = root.find((n) => n.kind === 'score')!;
-        assert.strictEqual(score.description, 'sem meta');
+        assert.strictEqual(score.description, 'no goal');
         assert.strictEqual(color(score), 'charts.yellow');
         const kids = await tree.getChildren(root.find((n) => n.kind === 'characteristics'));
         assert.strictEqual(kids[0].description, '0.57');
-        assert.ok(kids[0].tooltip?.includes('(sem meta)'));
+        assert.ok(kids[0].tooltip?.includes('(no goal)'));
         assert.strictEqual((kids[0].icon as any).id, 'pass');
         assert.strictEqual(color(kids[0]), 'charts.green');
     });
@@ -308,15 +308,15 @@ suite('QualityTreeProvider — variações da árvore', () => {
         await tree.refresh();
         const kids = await tree.getChildren((await tree.getChildren()).find((n) => n.kind === 'characteristics'));
         assert.strictEqual(color(kids[0]), 'charts.yellow');
-        assert.ok(kids[0].tooltip?.includes('(meta 0.80)'));
+        assert.ok(kids[0].tooltip?.includes('(goal 0.80)'));
         assert.strictEqual(color(kids[1]), 'charts.red');
     });
 
-    test('sem análise registrada: "Nunca analisado" sem tooltip', async () => {
+    test('sem análise registrada: "Never analyzed" sem tooltip', async () => {
         const {tree} = withScore({...SCORE, lastAnalysisAt: null});
         await tree.refresh();
         const last = (await tree.getChildren()).find((n) => n.kind === 'lastAnalysis')!;
-        assert.strictEqual(last.label, 'Nunca analisado');
+        assert.strictEqual(last.label, 'Never analyzed');
         assert.strictEqual(last.tooltip, undefined);
     });
 });

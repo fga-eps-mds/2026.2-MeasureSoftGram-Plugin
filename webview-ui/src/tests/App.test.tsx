@@ -454,4 +454,14 @@ describe('App', () => {
             );
         });
     });
+
+    describe('l10n_bundle', () => {
+        it('configura @vscode/l10n ao receber l10n_bundle', async () => {
+            const l10n = await import('@vscode/l10n');
+            render(<App/>);
+            act(() => sendMessage({command: 'l10n_bundle', contents: {Panel: 'Painel'}}));
+            expect(l10n.t('Panel')).toBe('Painel');
+            l10n.config({contents: {}});
+        });
+    });
 });

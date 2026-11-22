@@ -13,56 +13,56 @@ describe('RunButton', () => {
     });
 
 
-    it('deve renderizar o botão com texto "Executar" quando não está rodando', () => {
+    it('deve renderizar o botão com texto "Run" quando não está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        expect(screen.getByRole('button', {name: /executar/i})).toHaveTextContent('Executar');
+        expect(screen.getByRole('button', {name: /run/i})).toHaveTextContent('Run');
     });
 
-    it('deve renderizar o botão com texto "Executando..." quando está rodando', () => {
+    it('deve renderizar o botão com texto "Running..." quando está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        expect(screen.getByRole('button', {name: /executando/i})).toHaveTextContent('Executando...');
+        expect(screen.getByRole('button', {name: /running/i})).toHaveTextContent('Running...');
     });
 
     it('deve estar habilitado quando running é false', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        expect(screen.getByRole('button', {name: /executar/i})).not.toBeDisabled();
+        expect(screen.getByRole('button', {name: /run/i})).not.toBeDisabled();
     });
 
     it('deve estar desabilitado quando running é true', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        expect(screen.getByRole('button', {name: /executando/i})).toBeDisabled();
+        expect(screen.getByRole('button', {name: /running/i})).toBeDisabled();
     });
 
     it('deve chamar onRun ao clicar quando não está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        fireEvent.click(screen.getByRole('button', {name: /executar/i}));
+        fireEvent.click(screen.getByRole('button', {name: /run/i}));
         expect(onRun).toHaveBeenCalledTimes(1);
     });
 
     it('não deve chamar onRun ao clicar quando está desabilitado', async () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        await userEvent.click(screen.getByRole('button', {name: /executando/i}));
+        await userEvent.click(screen.getByRole('button', {name: /running/i}));
         expect(onRun).not.toHaveBeenCalled();
     });
 
     it('deve exibir ícone de play quando não está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        expect(screen.getByRole('button', {name: /executar/i}).querySelector('i')).toHaveClass('codicon-play');
+        expect(screen.getByRole('button', {name: /run/i}).querySelector('i')).toHaveClass('codicon-play');
     });
 
     it('deve exibir ícone de loader quando está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        expect(screen.getByRole('button', {name: /executando/i}).querySelector('i')).toHaveClass('codicon-loading codicon-modifier-spin');
+        expect(screen.getByRole('button', {name: /running/i}).querySelector('i')).toHaveClass('codicon-loading codicon-modifier-spin');
     });
 
-    it('não mostra "Parar" quando não está rodando', () => {
+    it('não mostra "Stop" quando não está rodando', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={false}/>);
-        expect(screen.queryByRole('button', {name: /parar/i})).not.toBeInTheDocument();
+        expect(screen.queryByRole('button', {name: /stop/i})).not.toBeInTheDocument();
     });
 
-    it('mostra "Parar" habilitado quando está rodando e chama onStop', () => {
+    it('mostra "Stop" habilitado quando está rodando e chama onStop', () => {
         render(<RunButton onRun={onRun} onStop={onStop} running={true}/>);
-        const stop = screen.getByRole('button', {name: /parar/i});
+        const stop = screen.getByRole('button', {name: /stop/i});
         expect(stop).not.toBeDisabled();
         fireEvent.click(stop);
         expect(onStop).toHaveBeenCalledTimes(1);

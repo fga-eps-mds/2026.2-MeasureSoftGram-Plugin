@@ -609,11 +609,11 @@ suite('MeasureSoftGramBase', () => {
         assert.ok(/https/i.test(err?.message ?? ''), err?.message);
     });
 
-    test('host fora de grafanaAllowedHosts é recusado com "não permitido"', async () => {
+    test('host fora de grafanaAllowedHosts é recusado com "not allowed"', async () => {
         const posted = await loadWithGrafanaUrl('https://outro.example/d/x', ['grafana.example']);
         assert.ok(!posted.some((m: any) => m.command === 'grafana_dashboard_loaded'));
         const err = posted.find((m: any) => m.command === 'grafana_error');
-        assert.ok(/não permitido/i.test(err?.message ?? ''), err?.message);
+        assert.ok(/not allowed/i.test(err?.message ?? ''), err?.message);
         assert.ok((err?.message ?? '').includes('outro.example'));
     });
 
@@ -847,5 +847,21 @@ suite('MeasureSoftGramBase', () => {
         const nc = base.webviewInstance.posted.find((m: any) => m.command === 'not_configured');
         assert.deepStrictEqual(nc?.missing, ['productName']);
         assert.strictEqual(base.loadState, 'not_configured');
+    });
+
+    test('request_score envia l10n_bundle quando vscode.l10n.uri está definido', async () => {
+        const vscode = require('vscode');
+        const path = require('path');
+        const originalUri = vscode.l10n.uri;
+        vscode.l10n.uri = { fsPath: path.resolve(process.cwd(), 'l10n/bundle.l10n.pt-br.json') };
+        try {
+            const base = new TestableBase(makeExtensionContext());
+            await base.handleMessage({ command: 'request_score' });
+            const bundleMsg = base.webviewInstance.posted.find((m: any) => m.command === 'l10n_bundle');
+            assert.ok(bundleMsg, 'deve emitir l10n_bundle');
+            assert.strictEqual(bundleMsg.contents.Panel, 'Painel');
+        } finally {
+            vscode.l10n.uri = originalUri;
+        }
     });
 });
