@@ -79,7 +79,7 @@ const App: React.FC = () => {
     const [yamlExists, setYamlExists] = useState<boolean | null>(null);
     const [actionSavedFeedback, setActionSavedFeedback] = useState(false);
     const [actionAlert, setActionAlert] = useState<string | null>(null);
-    const [, setL10nVersion] = useState(0);
+    const [l10nVersion, setL10nVersion] = useState(0);
 
     useEffect(() => {
         vscode.postMessage({command: 'request_score'});
@@ -321,7 +321,7 @@ const App: React.FC = () => {
 
             <Tabs active={activeTab} onSelect={showTab}/>
 
-            <div className="pc">
+            <div className="pc" data-l10n-version={l10nVersion}>
 
                 {activeTab === 'dashboard' && loadState === 'not_configured' && (
                     <NotConfiguredView
