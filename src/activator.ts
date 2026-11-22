@@ -1,3 +1,5 @@
+import {l10n} from 'vscode';
+
 export interface ActivatorVscode {
     commands: {
         registerCommand: (id: string, fn: (...args: any[]) => any) => { dispose: () => void };
@@ -103,16 +105,17 @@ export function activate<S, P = any>(
 
     context.subscriptions.push(
         vscode.commands.registerCommand('msgram.clearTokens', async () => {
+            const removeLabel = l10n.t('Remove');
             const confirm = await vscode.window.showWarningMessage?.(
-                'Remover os tokens do MeasureSoftGram e do GitHub salvos no Secret Storage?',
-                'Remover',
+                l10n.t('Remove the MeasureSoftGram and GitHub tokens saved in Secret Storage?'),
+                removeLabel,
             );
-            if (confirm !== 'Remover' || !context.secrets) {
+            if (confirm !== removeLabel || !context.secrets) {
                 return;
             }
             await context.secrets.delete('msgram.token');
             await context.secrets.delete('msgram.githubToken');
-            await vscode.window.showInformationMessage?.('Tokens removidos. Configure novamente em Settings.');
+            await vscode.window.showInformationMessage?.(l10n.t('Tokens removed. Configure again in Settings.'));
         }),
     );
 

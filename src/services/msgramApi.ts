@@ -6,6 +6,7 @@
  * erro sobe como HttpError{kind:'auth'}. A classe base evita chegar aqui
  * quando a extensão não está configurada.
  */
+import {l10n} from 'vscode';
 import {getAll, HttpError, request} from './httpClient';
 import {timestamp as ts} from '../utilities/log';
 import type {Characteristic, OrgItem, RepoItem, ScoreData} from '../panels/messages';
@@ -98,7 +99,7 @@ export async function fetchRepositories(settings: MsgramSettings, log: Logger = 
   log(`[${ts()}] GET ${orgsUrl}`);
   const organizations = await getAll<OrgItem>(orgsUrl, o);
   if (!organizations.length) {
-    throw new HttpError('Nenhuma organização encontrada para este token.', 'not_found', 404);
+    throw new HttpError(l10n.t('No organization found for this token.'), 'not_found', 404);
   }
 
   let org = organizations[0];
@@ -110,7 +111,7 @@ export async function fetchRepositories(settings: MsgramSettings, log: Logger = 
     const found = organizations.find((x) => norm(x.name) === wanted);
     if (!found) {
       throw new HttpError(
-          `Organização "${settings.organizationName}" não encontrada. Disponíveis: ${organizations.map((x) => x.name).join(', ')}`,
+          l10n.t('Organization "{0}" not found. Available: {1}', settings.organizationName ?? '', organizations.map((x) => x.name).join(', ')),
           'not_found', 404,
       );
     }
@@ -123,8 +124,8 @@ export async function fetchRepositories(settings: MsgramSettings, log: Logger = 
   const products = await getAll<ProductItem>(productsUrl, o);
   const product = products.find((p) => norm(p.name) === norm(settings.productName));
   if (!product) {
-    const names = products.map((p) => p.name.trim()).join(', ') || 'nenhum';
-    throw new HttpError(`Produto "${settings.productName}" não encontrado. Disponíveis: ${names}`, 'not_found', 404);
+    const names = products.map((p) => p.name.trim()).join(', ') || l10n.t('none');
+    throw new HttpError(l10n.t('Product "{0}" not found. Available: {1}', settings.productName, names), 'not_found', 404);
   }
   log(`[${ts()}] → Produto: "${product.name.trim()}" (id=${product.id})`);
 

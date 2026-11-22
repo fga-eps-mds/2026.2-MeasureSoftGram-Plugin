@@ -1,3 +1,5 @@
+import {l10n} from 'vscode';
+
 export interface StatusBarDeps {
   createStatusBarItem: (alignment: any, priority: number) => any;
   ThemeColor: new (color: string) => any;
@@ -18,7 +20,7 @@ export class MsgramStatusBar {
   constructor(deps: StatusBarDeps = getDefaultDeps()) {
     this._item = deps.createStatusBarItem(1, 100);
     this._item.command = 'msgram.qualityView.focus';
-    this._item.tooltip = 'MeasureSoftGram — clique para abrir';
+    this._item.tooltip = l10n.t('MeasureSoftGram — click to open');
     this.setLoading();
     this._item.show();
   }
@@ -42,19 +44,19 @@ export class MsgramStatusBar {
   }
 
   setNotConfigured(): void {
-    this._item.text = '$(gear) MSGRAM: configurar';
+    this._item.text = `$(gear) ${l10n.t('MSGRAM: configure')}`;
     this._item.color = undefined;
     this._item.backgroundColor = undefined;
   }
 
   setNoData(): void {
-    this._item.text = '$(dash) MSGRAM: sem dados';
+    this._item.text = `$(dash) ${l10n.t('MSGRAM: no data')}`;
     this._item.color = undefined;
     this._item.backgroundColor = undefined;
   }
 
   setError(deps: StatusBarDeps = getDefaultDeps()): void {
-    this._item.text = '$(warning) MSGRAM: erro';
+    this._item.text = `$(warning) ${l10n.t('MSGRAM: error')}`;
     this._item.color = new deps.ThemeColor('statusBarItem.warningForeground');
     this._item.backgroundColor = new deps.ThemeColor('statusBarItem.warningBackground');
   }
