@@ -14,6 +14,9 @@
 
 </div>
 
+> [!WARNING]
+> **A versão do VS Code Marketplace (1.0.2, de 06/07/2026) está descontinuada. Não instale.** Ela é a versão antiga do plugin: mostra dados fictícios e não tem login com o MeasureSoftGram. Ela continua publicada só porque a equipe perdeu o acesso à conta dona do publisher `MeasureSoftGram`. A remoção está registrada em [TASK05.04 (#139)](https://github.com/fga-eps-mds/2026.2-MeasureSoftGram-DOC/issues/139). Enquanto isso, instale a versão atual pelo `.vsix` (ver [Instalação](#instalação)).
+
 ---
 
 ## Visão geral
@@ -45,7 +48,7 @@ A aba **Action** edita e salva o `msgram.yml`. A execução oficial continua sen
 
 ## Instalação
 
-1. Instale a extensão pelo [Marketplace](https://marketplace.visualstudio.com/items?itemName=MeasureSoftGram.measuresoftgram).
+1. Gere o `.vsix` com `npm ci && npm run build:webview && npm run package` e instale no VS Code com `Ctrl+Shift+P` → **Extensions: Install from VSIX...**. Não use a versão do Marketplace: ela é a antiga, descontinuada (ver o aviso no topo).
 2. Crie sua conta no [MeasureSoftGram](https://msgram.lappis.rocks/) e gere um **token de API** no seu perfil. Cadastre (ou peça acesso a) o **produto** que você quer acompanhar.
 3. Clique no ícone **MeasureSoftGram** na Activity Bar, ou use `Ctrl+Shift+P` → `MeasureSoftGram: Abrir MeasureSoftGram (Panel)`.
 4. Na aba **Config**, informe:
