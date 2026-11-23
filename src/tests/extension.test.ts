@@ -38,6 +38,9 @@ suite('extension — activate()', () => {
     let logs: string[];
     let persistedPatches: any[];
     let disposeSharedCalled: boolean;
+    let quickPickCalls: { items: any[]; options?: any }[];
+    let inputBoxCalls: any[];
+    let infoMessageCalls: { msg: string; options?: any; okLabel?: string }[];
 
     setup(() => {
         subscriptions = [];
@@ -58,6 +61,9 @@ suite('extension — activate()', () => {
         logs = [];
         persistedPatches = [];
         disposeSharedCalled = false;
+        quickPickCalls = [];
+        inputBoxCalls = [];
+        infoMessageCalls = [];
 
         setOutputChannelForTests({
             appendLine: (m: string) => logs.push(m),
@@ -73,12 +79,19 @@ suite('extension — activate()', () => {
             errors.push(msg);
             return undefined;
         };
-        vscode.window.showInformationMessage = async (msg: string, _opts?: any, okLabel?: string) => {
+        vscode.window.showInformationMessage = async (msg: string, opts?: any, okLabel?: string) => {
             infos.push(msg);
+            infoMessageCalls.push({msg, options: opts, okLabel});
             return okLabel;
         };
-        vscode.window.showQuickPick = async (items: any[]) => items[0];
-        vscode.window.showInputBox = async (opts: { prompt?: string; value?: string }) => opts.value ?? 'input-val';
+        vscode.window.showQuickPick = async (items: any[], options?: any) => {
+            quickPickCalls.push({items, options});
+            return items[0];
+        };
+        vscode.window.showInputBox = async (opts: { prompt?: string; value?: string }) => {
+            inputBoxCalls.push(opts);
+            return opts.value ?? 'input-val';
+        };
         vscode.workspace.workspaceFolders = undefined;
 
         (activatorMod as any).activate = (
@@ -193,15 +206,15 @@ suite('extension — activate()', () => {
     test('callback de cadastro cadastra com sucesso, exercita callbacks de UI/persist/log e chama afterSuccess', async () => {
         vscode.workspace.workspaceFolders = [{uri: {fsPath: '/workspace/my-repo'}}];
         let receivedHints: any;
+        let picked: any;
+        let inputVal: any;
+        let confirmed: any;
 
         (registerRepoMod as any).registerWorkspaceRepo = async (_settings: any, hints: any, deps: registerRepoMod.RegisterDeps) => {
             receivedHints = hints;
-            const picked = await deps.ui.pick([{label: 'org1'}], 'Escolha org');
-            assert.strictEqual(picked?.label, 'org1');
-            const inputVal = await deps.ui.input('Nome', 'default-prod');
-            assert.strictEqual(inputVal, 'default-prod');
-            const confirmed = await deps.ui.confirm('Confirmar?', 'Cadastrar');
-            assert.strictEqual(confirmed, true);
+            picked = await deps.ui.pick([{label: 'org1'}], 'Escolha org');
+            inputVal = await deps.ui.input('Nome', 'default-prod');
+            confirmed = await deps.ui.confirm('Confirmar?', 'Cadastrar');
             deps.ui.info('Info msg');
             deps.ui.warn('Warn msg');
             await deps.persist({productName: 'prod1', organizationName: 'org1'});
@@ -222,12 +235,53 @@ suite('extension — activate()', () => {
             afterSuccessCalled = true;
         });
 
+        assert.strictEqual(picked?.label, 'org1');
+        assert.strictEqual(inputVal, 'default-prod');
+        assert.strictEqual(confirmed, true);
+        assert.deepStrictEqual(infoMessageCalls[0].options, {modal: true});
+        assert.deepStrictEqual(quickPickCalls[0].options, {placeHolder: 'Escolha org'});
+        assert.deepStrictEqual(inputBoxCalls[0], {prompt: 'Nome', value: 'default-prod'});
         assert.deepStrictEqual(receivedHints, {folderName: 'my-repo', remoteName: 'repo-hint'});
         assert.strictEqual(afterSuccessCalled, true);
         assert.deepStrictEqual(persistedPatches, [{productName: 'prod1', organizationName: 'org1'}]);
         assert.ok(infos.includes('Info msg'));
         assert.ok(warnings.includes('Warn msg'));
         assert.ok(logs.includes('log msg'));
+    });
+
+    test('callback de cadastro não chama afterSuccess quando registerWorkspaceRepo é cancelado', async () => {
+        (registerRepoMod as any).registerWorkspaceRepo = async () => ({kind: 'cancelled'});
+
+        activate(fakeContext);
+        assert.ok(capturedRegisterRepo);
+
+        let afterSuccessCalled = false;
+        await capturedRegisterRepo(async () => {
+            afterSuccessCalled = true;
+        });
+
+        assert.strictEqual(afterSuccessCalled, false);
+        assert.strictEqual(errors.length, 0);
+        assert.strictEqual(warnings.length, 0);
+    });
+
+    test('callback de cadastro trata erro que não é instância de Error convertendo com String(err)', async () => {
+        (registerRepoMod as any).registerWorkspaceRepo = async () => {
+            return Promise.reject('falha em string');
+        };
+
+        activate(fakeContext);
+        assert.ok(capturedRegisterRepo);
+
+        let afterSuccessCalled = false;
+        await capturedRegisterRepo(async () => {
+            afterSuccessCalled = true;
+        });
+
+        assert.strictEqual(afterSuccessCalled, false);
+        assert.strictEqual(errors.length, 1);
+        assert.strictEqual(errors[0], 'Não foi possível cadastrar o repositório: falha em string');
+        assert.ok(logs.some((l) => l.includes('[registro] erro: falha em string')));
     });
 
     test('callback de cadastro trata erro mostrando showErrorMessage e registrando no log', async () => {
