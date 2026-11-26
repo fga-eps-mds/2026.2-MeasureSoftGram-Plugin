@@ -198,7 +198,7 @@ suite('extension — activate()', () => {
         });
 
         assert.strictEqual(warnings.length, 1);
-        assert.ok(warnings[0].includes('Informe o token do MeasureSoftGram'));
+        assert.ok(warnings[0].includes('Enter the MeasureSoftGram token'));
         assert.strictEqual(registerCalled, false);
         assert.strictEqual(afterSuccessCalled, false);
     });
@@ -280,7 +280,7 @@ suite('extension — activate()', () => {
 
         assert.strictEqual(afterSuccessCalled, false);
         assert.strictEqual(errors.length, 1);
-        assert.strictEqual(errors[0], 'Não foi possível cadastrar o repositório: falha em string');
+        assert.strictEqual(errors[0], 'Could not register repository: falha em string');
         assert.ok(logs.some((l) => l.includes('[registro] erro: falha em string')));
     });
 
@@ -299,7 +299,7 @@ suite('extension — activate()', () => {
 
         assert.strictEqual(afterSuccessCalled, false);
         assert.strictEqual(errors.length, 1);
-        assert.strictEqual(errors[0], 'Não foi possível cadastrar o repositório: Falha na API');
+        assert.strictEqual(errors[0], 'Could not register repository: Falha na API');
         assert.ok(logs.some((l) => l.includes('[registro] erro: Falha na API')));
     });
 });
