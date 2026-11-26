@@ -13,6 +13,7 @@ suite('activator — activate()', () => {
     suiteSetup(() => {
         const fakeContext = {subscriptions};
         const fakeVscode = {
+            l10n: {t: (message: string, ...args: Array<string | number | boolean>) => message.replace(/\{(\d+)\}/g, (_m: string, i: string) => String(args[Number(i)]))},
             commands: {
                 registerCommand: (id: string, fn: () => void) => {
                     registeredCommands[id] = fn;
@@ -96,6 +97,7 @@ suite('activator — activate()', () => {
         let choice: string | undefined;
         const cmds: Record<string, (...a: any[]) => any> = {};
         const localVscode = {
+            l10n: {t: (message: string, ...args: Array<string | number | boolean>) => message.replace(/\{(\d+)\}/g, (_m: string, i: string) => String(args[Number(i)]))},
             commands: {
                 registerCommand: (id: string, fn: (...a: any[]) => any) => {
                     cmds[id] = fn;

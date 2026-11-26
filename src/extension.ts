@@ -19,7 +19,7 @@ export interface MsgramExtensionApi {
 
 export function activate(context: ExtensionContext): MsgramExtensionApi {
     const {sidebar, tree} = _activate(
-        context, {commands, window}, MeasureSoftGramPanel, MeasureSoftGramSidebar, MsgramStatusBar,
+        context, {commands, window, l10n}, MeasureSoftGramPanel, MeasureSoftGramSidebar, MsgramStatusBar,
         (statusBar) => new QualityTreeProvider({settingsDeps: makeSettingsDeps(context), statusBar}),
         async (afterSuccess) => {
             const deps = makeSettingsDeps(context);

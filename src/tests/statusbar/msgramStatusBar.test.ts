@@ -22,6 +22,7 @@ function makeFakeItem() {
 function makeDeps(item: ReturnType<typeof makeFakeItem>): StatusBarDeps {
     return {
         createStatusBarItem: () => item as any,
+        l10n: {t: (message: string) => message},
         ThemeColor: class {
             constructor(public id: string) {
             }

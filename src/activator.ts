@@ -1,6 +1,5 @@
-import {l10n} from 'vscode';
-
 export interface ActivatorVscode {
+    l10n: { t: (message: string, ...args: Array<string | number | boolean>) => string };
     commands: {
         registerCommand: (id: string, fn: (...args: any[]) => any) => { dispose: () => void };
         executeCommand?: (id: string, ...args: any[]) => Thenable<unknown>;
@@ -38,6 +37,7 @@ export function activate<S, P = any>(
     makeTree?: (statusBar: any) => TreeLike,
     registerRepo?: (afterSuccess: () => Promise<void>) => Promise<void>,
 ): { sidebar: S; tree?: TreeLike } {
+    const {l10n} = vscode;
     const statusBar = new StatusBar();
     context.subscriptions.push(statusBar);
 
