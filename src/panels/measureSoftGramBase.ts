@@ -200,8 +200,8 @@ export abstract class MeasureSoftGramBase {
                 : await defaultFs.readFile(l10n.uri.fsPath, 'utf-8');
             const contents = JSON.parse(raw) as Record<string, string>;
             this.post({command: 'l10n_bundle', contents});
-        } catch {
-            // Fallback: webview keeps English source strings
+        } catch (err) {
+            this.logger()(`[ERRO] Não foi possível ler as traduções em ${l10n.uri.fsPath}: ${(err as Error).message}`);
         }
     }
 

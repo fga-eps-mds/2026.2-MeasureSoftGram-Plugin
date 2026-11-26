@@ -864,4 +864,21 @@ suite('MeasureSoftGramBase', () => {
             vscode.l10n.uri = originalUri;
         }
     });
+
+    test('bundle de tradução inválido é registrado no log e o webview segue em inglês', async () => {
+        const vscode = require('vscode');
+        const path = require('path');
+        const originalUri = vscode.l10n.uri;
+        vscode.l10n.uri = { fsPath: path.resolve(process.cwd(), 'package.json.nao-existe') };
+        try {
+            const base = new TestableBase(makeExtensionContext());
+            const logs: string[] = [];
+            (base as any).logger = () => (msg: string) => logs.push(msg);
+            await base.handleMessage({ command: 'request_score' });
+            assert.ok(!base.webviewInstance.posted.some((m: any) => m.command === 'l10n_bundle'));
+            assert.ok(logs.some((l) => l.includes('Não foi possível ler as traduções')), logs.join('\n'));
+        } finally {
+            vscode.l10n.uri = originalUri;
+        }
+    });
 });
