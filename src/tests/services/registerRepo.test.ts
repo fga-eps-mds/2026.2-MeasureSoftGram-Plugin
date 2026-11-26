@@ -51,13 +51,13 @@ suite('registerWorkspaceRepo', () => {
         const r = await registerWorkspaceRepo(settings, {remoteName: 'meu-repo', remoteUrl: 'https://github.com/x/meu-repo'}, deps as any);
 
         assert.strictEqual(r.kind, 'registered');
-        assert.deepStrictEqual(created, [{repo: {name: 'meu-repo', url: 'https://github.com/x/meu-repo', description: 'Cadastrado pela extensão do VS Code a partir de https://github.com/x/meu-repo', platform: 'github'}, orgPk: 2, productPk: 20}]);
+        assert.deepStrictEqual(created, [{repo: {name: 'meu-repo', url: 'https://github.com/x/meu-repo', description: 'Registered by the VS Code extension from https://github.com/x/meu-repo', platform: 'github'}, orgPk: 2, productPk: 20}]);
         assert.deepStrictEqual(persisted, [{productName: 'Integracao', organizationName: 'Luiza Maluf'}]);
         assert.ok(messages.some((m) => m.startsWith('info:') && m.includes('meu-repo')));
     });
 
     test('"criar um produto novo" cria o produto com o nome sugerido e depois o repositório', async () => {
-        const {ui} = makeUi({picks: ['EPS/MDS', 'Criar um produto novo'], inputs: [undefined]});
+        const {ui} = makeUi({picks: ['EPS/MDS', 'Create a new product'], inputs: [undefined]});
         const {deps, created, persisted} = makeDeps(ui);
 
         const r = await registerWorkspaceRepo(settings, {folderName: 'projeto-x'}, deps as any);

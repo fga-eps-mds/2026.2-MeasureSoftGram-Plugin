@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useRef} from 'react';
+import * as l10n from '@vscode/l10n';
 import DOMPurify from 'dompurify';
 import {colorizeYaml, escHtml} from '../../utils/helpers.ts';
 
@@ -74,7 +75,7 @@ export const YamlEditor: React.FC<YamlEditorProps> = ({value, onChange}) => {
                     ref={editorRef}
                     className="fi yaml-textarea"
                     spellCheck={false}
-                    placeholder="Carregando..."
+                    placeholder={l10n.t('Loading...')}
                     value={value}
                     onChange={handleInput}
                     onScroll={handleScroll}

@@ -106,6 +106,7 @@ export type PanelMessage =
 // ── Extensão → Interface ───────────────────────────────────────────────────
 
 export type ExtensionMessage =
+    | { command: 'l10n_bundle'; contents: Record<string, string> }
     | { command: 'not_configured'; missing: MissingSetting[]; unregisteredRepo?: string }
     | { command: 'settings_loaded'; data: SettingsForUi }
     | { command: 'settings_saved' }

@@ -7,8 +7,10 @@
  */
 import {
     commands,
+    env,
     Event,
     EventEmitter,
+    l10n,
     MarkdownString,
     ThemeColor,
     ThemeIcon,
@@ -239,12 +241,12 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     async selectRepository(): Promise<void> {
         const repos = this._context?.repos ?? [];
         if (!repos.length) {
-            void window.showInformationMessage('Nenhum repositório carregado. Configure o produto primeiro.');
+            void window.showInformationMessage(l10n.t('No repositories loaded. Configure the product first.'));
             return;
         }
         const picked = await window.showQuickPick(
-            repos.map((r) => ({label: r.name, description: r.id === this._selectedRepo?.id ? 'selecionado' : undefined, repo: r})),
-            {placeHolder: 'Repositório do produto'},
+            repos.map((r) => ({label: r.name, description: r.id === this._selectedRepo?.id ? l10n.t('selected') : undefined, repo: r})),
+            {placeHolder: l10n.t('Product repository')},
         );
         if (picked && picked.repo.id !== this._selectedRepo?.id) {
             this._selectedRepo = picked.repo;
@@ -264,12 +266,16 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     async selectOrganization(): Promise<void> {
         const orgs = this._context?.organizations ?? [];
         if (orgs.length < 2) {
-            void window.showInformationMessage('Sua conta tem só uma organização.');
+            void window.showInformationMessage(l10n.t('Your account has only one organization.'));
             return;
         }
         const picked = await window.showQuickPick(
-            orgs.map((o) => ({label: o.name, description: `id ${o.id}${o.id === this._context?.orgPk ? ' · selecionada' : ''}`, org: o})),
-            {placeHolder: 'Organização'},
+            orgs.map((o) => ({
+                label: o.name,
+                description: o.id === this._context?.orgPk ? l10n.t('id {0} · selected', o.id) : l10n.t('id {0}', o.id),
+                org: o,
+            })),
+            {placeHolder: l10n.t('Organization')},
         );
         if (picked && picked.org.id !== this._context?.orgPk) {
             this._orgPkOverride = picked.org.id;
@@ -314,14 +320,14 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             if (node.kind === 'dashboards') {
                 const list = await this.loadDashboards();
                 if (!list.length) {
-                    return [{kind: 'noData', label: 'Nenhum dashboard disponível', icon: new ThemeIcon('info')}];
+                    return [{kind: 'noData', label: l10n.t('No dashboards available'), icon: new ThemeIcon('info')}];
                 }
                 return list.map((d) => ({
                     kind: 'dashboard',
                     label: d.title,
-                    description: d.has_repo_selector ? 'por repositório' : undefined,
+                    description: d.has_repo_selector ? l10n.t('by repository') : undefined,
                     icon: new ThemeIcon('graph'),
-                    command: {command: 'msgram.openDashboard', title: 'Abrir dashboard', arguments: [d.uid]},
+                    command: {command: 'msgram.openDashboard', title: l10n.t('Open dashboard'), arguments: [d.uid]},
                 }));
             }
             return node.children ?? [];
@@ -338,7 +344,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             return this.unregisteredNodes();
         }
         if (this._state === 'loading' && !this._score) {
-            return [{kind: 'loading', label: 'Carregando…', icon: new ThemeIcon('loading~spin')}];
+            return [{kind: 'loading', label: l10n.t('Loading…'), icon: new ThemeIcon('loading~spin')}];
         }
         if (this._state === 'error' && this._error) {
             return [this.errorNode(this._error), this.actionsNode()];
@@ -347,7 +353,7 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
         const ctx = this._context;
         const nodes: QualityNode[] = [...this.contextNodes(ctx), ...scoreNodes(this._score)];
         if (ctx) {
-            nodes.push({kind: 'dashboards', label: 'Dashboards Grafana', icon: new ThemeIcon('graph-line')});
+            nodes.push({kind: 'dashboards', label: l10n.t('Grafana Dashboards'), icon: new ThemeIcon('graph-line')});
         }
         nodes.push(this.actionsNode());
         return nodes;
@@ -357,26 +363,26 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
         return [
             {
                 kind: 'error',
-                label: `"${this._unregisteredRepo}" não está cadastrado`,
-                description: 'em nenhum produto desta conta',
-                tooltip: 'Cadastre o repositório em um produto no site do MeasureSoftGram (Repositories → importar) e rode a Action uma vez. Ou informe o produto em Configurar.',
+                label: l10n.t('"{0}" is not registered', this._unregisteredRepo ?? ''),
+                description: l10n.t('in any product of this account'),
+                tooltip: l10n.t('Register the repository in a product on the MeasureSoftGram website (Repositories → import) and run the Action once. Or enter the product in Configure.'),
                 icon: new ThemeIcon('repo', new ThemeColor('charts.yellow')),
             },
-            {kind: 'action', label: 'Cadastrar automaticamente', description: 'cria o repositório no produto que você escolher', icon: new ThemeIcon('cloud-upload'), command: {command: 'msgram.registerRepo', title: 'Cadastrar'}},
-            {kind: 'action', label: 'Abrir o site do MeasureSoftGram', icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: 'Abrir site'}},
-            {kind: 'action', label: 'Informar o produto manualmente', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
-            {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
+            {kind: 'action', label: l10n.t('Register automatically'), description: l10n.t('creates the repository in the product you choose'), icon: new ThemeIcon('cloud-upload'), command: {command: 'msgram.registerRepo', title: l10n.t('Register')}},
+            {kind: 'action', label: l10n.t('Open MeasureSoftGram website'), icon: new ThemeIcon('link-external'), command: {command: 'msgram.openSite', title: l10n.t('Open website')}},
+            {kind: 'action', label: l10n.t('Enter product manually'), icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: l10n.t('Configure')}},
+            {kind: 'action', label: l10n.t('Refresh'), icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: l10n.t('Refresh')}},
         ];
     }
 
     private errorNode(error: { message: string; kind: string }): QualityNode {
         return {
             kind: 'error',
-            label: error.kind === 'auth' ? 'Token inválido ou expirado' : 'Não foi possível carregar',
+            label: error.kind === 'auth' ? l10n.t('Invalid or expired token') : l10n.t('Could not load'),
             description: error.kind,
             tooltip: error.message,
             icon: new ThemeIcon('error', new ThemeColor('errorForeground')),
-            command: {command: 'msgram.refresh', title: 'Tentar de novo'},
+            command: {command: 'msgram.refresh', title: l10n.t('Try again')},
         };
     }
 
@@ -389,10 +395,10 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
                 kind: 'product',
                 label: ctx.productName,
                 description: ctx.orgName,
-                tooltip: `Produto **${ctx.productName}** · organização **${ctx.orgName}**` +
-                    (manyOrgs ? '\n\nClique para trocar de organização.' : ''),
+                tooltip: l10n.t('Product **{0}** · organization **{1}**', ctx.productName, ctx.orgName) +
+                    (manyOrgs ? `\n\n${l10n.t('Click to switch organization.')}` : ''),
                 icon: new ThemeIcon('package'),
-                command: manyOrgs ? {command: 'msgram.selectOrganization', title: 'Trocar organização'} : undefined,
+                command: manyOrgs ? {command: 'msgram.selectOrganization', title: l10n.t('Switch organization')} : undefined,
             });
         }
         if (this._selectedRepo) {
@@ -400,13 +406,13 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
             nodes.push({
                 kind: 'repo',
                 label: this._selectedRepo.name,
-                description: repoCount > 1 ? `${repoCount} repositórios` : undefined,
-                tooltip: 'Clique para trocar de repositório.',
+                description: repoCount > 1 ? l10n.t('{0} repositories', repoCount) : undefined,
+                tooltip: l10n.t('Click to switch repository.'),
                 icon: new ThemeIcon('repo'),
-                command: {command: 'msgram.selectRepository', title: 'Trocar repositório'},
+                command: {command: 'msgram.selectRepository', title: l10n.t('Switch repository')},
             });
         } else if (ctx) {
-            nodes.push({kind: 'noData', label: 'Produto sem repositórios', icon: new ThemeIcon('info')});
+            nodes.push({kind: 'noData', label: l10n.t('Product has no repositories'), icon: new ThemeIcon('info')});
         }
         return nodes;
     }
@@ -414,13 +420,13 @@ export class QualityTreeProvider implements TreeDataProvider<QualityNode> {
     private actionsNode(): QualityNode {
         return {
             kind: 'actions',
-            label: 'Ações',
+            label: l10n.t('Actions'),
             icon: new ThemeIcon('tools'),
             children: [
-                {kind: 'action', label: 'Abrir painel completo', icon: new ThemeIcon('window'), command: {command: 'msgram.run', title: 'Abrir painel'}},
-                {kind: 'action', label: 'Executar Action localmente', description: 'requer Docker', icon: new ThemeIcon('play'), command: {command: 'msgram.openActionTab', title: 'Executar'}},
-                {kind: 'action', label: 'Configurar', icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: 'Configurar'}},
-                {kind: 'action', label: 'Atualizar', icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: 'Atualizar'}},
+                {kind: 'action', label: l10n.t('Open full panel'), icon: new ThemeIcon('window'), command: {command: 'msgram.run', title: l10n.t('Open panel')}},
+                {kind: 'action', label: l10n.t('Run Action locally'), description: l10n.t('requires Docker'), icon: new ThemeIcon('play'), command: {command: 'msgram.openActionTab', title: l10n.t('Run')}},
+                {kind: 'action', label: l10n.t('Configure'), icon: new ThemeIcon('gear'), command: {command: 'msgram.openSettings', title: l10n.t('Configure')}},
+                {kind: 'action', label: l10n.t('Refresh'), icon: new ThemeIcon('refresh'), command: {command: 'msgram.refresh', title: l10n.t('Refresh')}},
             ],
         };
     }
@@ -432,19 +438,19 @@ function scoreNodes(s: ScoreData | null): QualityNode[] {
         return [];
     }
     if (s.noData) {
-        return [{kind: 'noData', label: 'Sem métricas calculadas', description: 'rode a Action', icon: new ThemeIcon('circle-slash')}];
+        return [{kind: 'noData', label: l10n.t('No calculated metrics'), description: l10n.t('run the Action'), icon: new ThemeIcon('circle-slash')}];
     }
     return [
         tsqmiNode(s),
         {
             kind: 'lastAnalysis',
-            label: s.lastAnalysisAt ? `Última análise ${relative(s.lastAnalysisAt)}` : 'Nunca analisado',
-            tooltip: s.lastAnalysisAt ? new Date(s.lastAnalysisAt).toLocaleString('pt-BR') : undefined,
+            label: s.lastAnalysisAt ? l10n.t('Last analysis {0}', relative(s.lastAnalysisAt)) : l10n.t('Never analyzed'),
+            tooltip: s.lastAnalysisAt ? new Date(s.lastAnalysisAt).toLocaleString(env?.language || undefined) : undefined,
             icon: new ThemeIcon('history'),
         },
         {
             kind: 'characteristics',
-            label: 'Características',
+            label: l10n.t('Characteristics'),
             description: `${s.characteristics.length}`,
             icon: new ThemeIcon('list-tree'),
             children: s.characteristics.map(characteristicNode),
@@ -456,10 +462,10 @@ function tsqmiNode(s: ScoreData): QualityNode {
     const goals = s.characteristics.filter((c) => c.goal !== null);
     const avgGoal = goals.length ? goals.reduce((a, c) => a + (c.goal ?? 0), 0) / goals.length : null;
     if (avgGoal === null) {
-        return scoreNode(s, 'sem meta', 'charts.yellow');
+        return scoreNode(s, l10n.t('no goal'), 'charts.yellow');
     }
     const ok = s.score >= avgGoal;
-    return scoreNode(s, `meta ${avgGoal.toFixed(2)} ${ok ? '✓' : '✗'}`, ok ? 'charts.green' : 'charts.red');
+    return scoreNode(s, l10n.t('goal {0} {1}', avgGoal.toFixed(2), ok ? '✓' : '✗'), ok ? 'charts.green' : 'charts.red');
 }
 
 function scoreNode(s: ScoreData, description: string, color: string): QualityNode {
@@ -468,13 +474,13 @@ function scoreNode(s: ScoreData, description: string, color: string): QualityNod
         label: `TSQMI ${s.score.toFixed(2)}`,
         description,
         icon: new ThemeIcon('dashboard', new ThemeColor(color)),
-        command: {command: 'msgram.run', title: 'Abrir painel'},
+        command: {command: 'msgram.run', title: l10n.t('Open panel')},
     };
 }
 
 function characteristicNode(c: ScoreData['characteristics'][number]): QualityNode {
     const value = c.value.toFixed(2);
-    const meta = c.goal === null ? null : `meta ${c.goal.toFixed(2)}`;
+    const meta = c.goal === null ? null : l10n.t('goal {0}', c.goal.toFixed(2));
     const below = c.goal !== null && c.value < c.goal;
     const near = c.goal !== null && !below && c.value < c.goal * 1.1;
     let color = 'charts.green';
@@ -487,7 +493,7 @@ function characteristicNode(c: ScoreData['characteristics'][number]): QualityNod
         kind: 'characteristic',
         label: c.name,
         description: meta ? `${value} / ${meta}` : value,
-        tooltip: `**${c.name}**: ${value} (${meta ?? 'sem meta'})\n\nMedido em ${new Date(c.measuredAt).toLocaleString('pt-BR')}`,
+        tooltip: l10n.t('**{0}**: {1} ({2})\n\nMeasured on {3}', c.name, value, meta ?? l10n.t('no goal'), new Date(c.measuredAt).toLocaleString(env?.language || undefined)),
         icon: new ThemeIcon(below ? 'warning' : 'pass', new ThemeColor(color)),
     };
 }
@@ -496,15 +502,15 @@ function relative(iso: string): string {
     const diff = Math.max(0, Date.now() - new Date(iso).getTime());
     const min = Math.floor(diff / 60000);
     if (min < 1) {
-        return 'agora há pouco';
+        return l10n.t('just now');
     }
     if (min < 60) {
-        return `há ${min} min`;
+        return l10n.t('{0} min ago', min);
     }
     const h = Math.floor(min / 60);
     if (h < 24) {
-        return `há ${h} h`;
+        return l10n.t('{0} h ago', h);
     }
     const d = Math.floor(h / 24);
-    return `há ${d} dia${d === 1 ? '' : 's'}`;
+    return d === 1 ? l10n.t('1 day ago') : l10n.t('{0} days ago', d);
 }

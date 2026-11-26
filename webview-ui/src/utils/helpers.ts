@@ -1,8 +1,11 @@
+import * as l10n from '@vscode/l10n';
+
 export function now(): string {
-    return new Date().toLocaleTimeString('pt-BR', {
+    return new Date().toLocaleTimeString(document.documentElement.lang || undefined, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
+        hour12: false,
     });
 }
 
@@ -13,25 +16,31 @@ export function escHtml(str: string): string {
         .replace(/>/g, '&gt;');
 }
 
-/** "há 2 dias", "há 3 horas", "há 5 minutos" ou "agora há pouco". */
+/** "2 days ago", "3 hours ago", "5 minutes ago" or "just now". */
 export function formatRelative(iso: string, now: Date = new Date()): string {
     const then = new Date(iso);
-    if (Number.isNaN(then.getTime())) return 'data desconhecida';
+    if (Number.isNaN(then.getTime())) return l10n.t('unknown date');
     const diffSec = Math.max(0, Math.round((now.getTime() - then.getTime()) / 1000));
-    if (diffSec < 60) return 'agora há pouco';
+    if (diffSec < 60) return l10n.t('just now');
     const min = Math.floor(diffSec / 60);
-    if (min < 60) return `há ${min} minuto${min === 1 ? '' : 's'}`;
+    if (min < 60) return min === 1 ? l10n.t('1 minute ago') : l10n.t('{0} minutes ago', min);
     const h = Math.floor(min / 60);
-    if (h < 24) return `há ${h} hora${h === 1 ? '' : 's'}`;
+    if (h < 24) return h === 1 ? l10n.t('1 hour ago') : l10n.t('{0} hours ago', h);
     const d = Math.floor(h / 24);
-    return `há ${d} dia${d === 1 ? '' : 's'}`;
+    return d === 1 ? l10n.t('1 day ago') : l10n.t('{0} days ago', d);
 }
 
-/** Data e hora absolutas em pt-BR, para tooltips. */
+/** Data e hora absolutas, para tooltips. */
 export function formatAbsolute(iso: string): string {
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return iso;
-    return d.toLocaleString('pt-BR', {dateStyle: 'short', timeStyle: 'short'});
+    return d.toLocaleString(document.documentElement.lang || undefined, {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
 }
 
 export type StatusColor = 'ok' | 'warn' | 'fail';

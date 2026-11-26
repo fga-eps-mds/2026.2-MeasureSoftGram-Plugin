@@ -117,6 +117,25 @@ const vscode = {
             return new vscode.Disposable(() => disposables.forEach(d => d.dispose()));
         }
     },
+
+    env: {
+        language: 'en',
+    },
+
+    l10n: {
+        uri: undefined as any,
+        t(message: string | { message: string; args?: Record<string, any> | any[] }, ...args: any[]): string {
+            const msg = typeof message === 'string' ? message : message.message;
+            const params = typeof message === 'string' ? args : (message.args ?? []);
+            if (Array.isArray(params)) {
+                return msg.replace(/\{(\d+)\}/g, (_, i) => (params[Number(i)] !== undefined ? String(params[Number(i)]) : `{${i}}`));
+            }
+            if (params && typeof params === 'object') {
+                return msg.replace(/\{(\w+)\}/g, (_, k) => (params[k] !== undefined ? String(params[k]) : `{${k}}`));
+            }
+            return msg;
+        },
+    },
 };
 
 require.cache['vscode'] = {

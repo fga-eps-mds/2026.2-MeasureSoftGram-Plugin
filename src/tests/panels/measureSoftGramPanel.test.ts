@@ -218,7 +218,7 @@ suite('MeasureSoftGramPanel — handleMessage: save_action', () => {
         );
 
         assert.strictEqual(deps._errors.length, 1);
-        assert.ok(deps._errors[0].includes('Abra uma pasta'));
+        assert.ok(deps._errors[0].includes('Open a folder'));
     });
 
     test('falha ao escrever o arquivo mostra mensagem de erro', async () => {

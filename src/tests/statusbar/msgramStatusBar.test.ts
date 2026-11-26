@@ -22,6 +22,7 @@ function makeFakeItem() {
 function makeDeps(item: ReturnType<typeof makeFakeItem>): StatusBarDeps {
     return {
         createStatusBarItem: () => item as any,
+        l10n: {t: (message: string) => message},
         ThemeColor: class {
             constructor(public id: string) {
             }
@@ -35,7 +36,7 @@ suite('MsgramStatusBar', () => {
         new MsgramStatusBar(makeDeps(item));
 
         assert.strictEqual(item.command, 'msgram.qualityView.focus');
-        assert.strictEqual(item.tooltip, 'MeasureSoftGram — clique para abrir');
+        assert.strictEqual(item.tooltip, 'MeasureSoftGram — click to open');
         assert.strictEqual(item.showCalled, true);
     });
 
@@ -87,7 +88,7 @@ suite('MsgramStatusBar', () => {
 
         sb.setNoData();
 
-        assert.strictEqual(item.text, '$(dash) MSGRAM: sem dados');
+        assert.strictEqual(item.text, '$(dash) MSGRAM: no data');
         assert.strictEqual(item.color, undefined);
         assert.strictEqual(item.backgroundColor, undefined);
     });
@@ -99,7 +100,7 @@ suite('MsgramStatusBar', () => {
 
         sb.setError(deps);
 
-        assert.strictEqual(item.text, '$(warning) MSGRAM: erro');
+        assert.strictEqual(item.text, '$(warning) MSGRAM: error');
         assert.strictEqual((item.color as any).id, 'statusBarItem.warningForeground');
         assert.strictEqual((item.backgroundColor as any).id, 'statusBarItem.warningBackground');
     });
@@ -119,7 +120,7 @@ suite('MsgramStatusBar', () => {
 
         bar.setNotConfigured();
 
-        assert.strictEqual(item.text, '$(gear) MSGRAM: configurar');
+        assert.strictEqual(item.text, '$(gear) MSGRAM: configure');
         assert.strictEqual(item.color, undefined);
         assert.strictEqual(item.backgroundColor, undefined);
     });

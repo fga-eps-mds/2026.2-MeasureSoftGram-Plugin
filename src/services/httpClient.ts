@@ -4,6 +4,7 @@
  */
 import * as http from 'node:http';
 import * as https from 'node:https';
+import {l10n} from 'vscode';
 import type {ScoreErrorKind} from '../panels/messages';
 
 export type HttpErrorKind = ScoreErrorKind;
@@ -56,7 +57,7 @@ export function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
   try {
     parsed = new URL(url);
   } catch {
-    return Promise.reject(new HttpError(`URL inválida: ${url}`, 'other'));
+    return Promise.reject(new HttpError(l10n.t('Invalid URL: {0}', url), 'other'));
   }
   const client = parsed.protocol === 'https:' ? https : http;
 
@@ -89,14 +90,14 @@ export function request<T>(url: string, opts: RequestOptions = {}): Promise<T> {
         try {
           resolve(JSON.parse(raw) as T);
         } catch {
-          reject(new HttpError(`Resposta não é JSON: ${raw.slice(0, 200)}`, 'other', status, raw));
+          reject(new HttpError(l10n.t('Response is not JSON: {0}', raw.slice(0, 200)), 'other', status, raw));
         }
       });
       res.on('error', (err) => reject(new HttpError(err.message, 'other', res.statusCode)));
     });
 
     req.setTimeout(timeoutMs, () => {
-      req.destroy(new HttpError(`O serviço não respondeu em ${Math.round(timeoutMs / 1000)} s.`, 'timeout'));
+      req.destroy(new HttpError(l10n.t('The service did not respond within {0} s.', Math.round(timeoutMs / 1000)), 'timeout'));
     });
 
     req.on('error', (err: NodeJS.ErrnoException) => {

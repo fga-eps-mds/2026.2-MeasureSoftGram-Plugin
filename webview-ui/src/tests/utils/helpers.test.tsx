@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {colorizeYaml, escHtml, getCharStatus, getStatusColor, now} from '../../utils/helpers';
+import {colorizeYaml, escHtml, formatAbsolute, formatRelative, getCharStatus, getStatusColor, now} from '../../utils/helpers';
 
 describe('helpers', () => {
 
@@ -87,6 +87,26 @@ describe('helpers', () => {
 
         it('deve retornar string vazia intacta', () => {
             expect(colorizeYaml('')).toBe('');
+        });
+    });
+
+    describe('formatRelative e formatAbsolute', () => {
+        const ref = new Date('2026-10-07T12:00:00Z');
+
+        it('formata intervalos relativos e data inválida', () => {
+            expect(formatRelative('invalid', ref)).toBe('unknown date');
+            expect(formatRelative('2026-10-07T11:59:40Z', ref)).toBe('just now');
+            expect(formatRelative('2026-10-07T11:59:00Z', ref)).toBe('1 minute ago');
+            expect(formatRelative('2026-10-07T11:55:00Z', ref)).toBe('5 minutes ago');
+            expect(formatRelative('2026-10-07T11:00:00Z', ref)).toBe('1 hour ago');
+            expect(formatRelative('2026-10-07T09:00:00Z', ref)).toBe('3 hours ago');
+            expect(formatRelative('2026-10-06T12:00:00Z', ref)).toBe('1 day ago');
+            expect(formatRelative('2026-10-05T12:00:00Z', ref)).toBe('2 days ago');
+        });
+
+        it('formata data absoluta e devolve entrada quando inválida', () => {
+            expect(formatAbsolute('invalid')).toBe('invalid');
+            expect(formatAbsolute('2026-10-05T12:00:00Z')).toMatch(/2026/);
         });
     });
 });

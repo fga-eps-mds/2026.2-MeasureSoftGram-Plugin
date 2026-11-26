@@ -1,4 +1,5 @@
 import React, {useEffect, useRef} from 'react';
+import * as l10n from '@vscode/l10n';
 import DOMPurify from 'dompurify';
 import type {LogLine} from '../../types';
 import {escHtml} from '../../utils/helpers.ts';
@@ -21,7 +22,7 @@ export const OutputView: React.FC<OutputViewProps> = ({lines}) => {
             <div className="oc" id="output-log" ref={logRef}>
                 {lines.length === 0 ? (
                     <div className="ll">
-                        <span className="linfo">Aguardando execução...</span>
+                        <span className="linfo">{l10n.t('Waiting for execution...')}</span>
                     </div>
                 ) : (
                     lines.map((line, i) => (

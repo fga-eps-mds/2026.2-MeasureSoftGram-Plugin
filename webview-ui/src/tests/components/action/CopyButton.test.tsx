@@ -1,5 +1,6 @@
 import {act, fireEvent, render, screen} from '@testing-library/react';
 import {beforeEach, describe, expect, it, vi} from 'vitest';
+import * as l10n from '@vscode/l10n';
 import {CopyButton} from '../../../components/action/CopyButton';
 
 describe('CopyButton', () => {
@@ -9,9 +10,9 @@ describe('CopyButton', () => {
         getValue.mockClear();
     });
 
-    it('deve renderizar o botão com texto inicial "Copiar"', () => {
+    it('deve renderizar o botão com texto inicial "Copy"', () => {
         render(<CopyButton getValue={getValue}/>);
-        expect(screen.getByRole('button')).toHaveTextContent('Copiar');
+        expect(screen.getByRole('button')).toHaveTextContent('Copy');
     });
 
     it('deve chamar getValue e escrever no clipboard ao clicar', async () => {
@@ -27,27 +28,39 @@ describe('CopyButton', () => {
         expect(writeText).toHaveBeenCalledWith('conteúdo copiado');
     });
 
-    it('deve mudar o texto para "Copiado" após clicar', () => {
+    it('deve mudar o texto para "Copied" após clicar', () => {
         render(<CopyButton getValue={getValue}/>);
         fireEvent.click(screen.getByRole('button'));
-        expect(screen.getByRole('button')).toHaveTextContent('Copiado');
+        expect(screen.getByRole('button')).toHaveTextContent('Copied');
     });
 
-    it('deve voltar para "Copiar" após 1500ms', async () => {
+    it('deve voltar para "Copy" após 1500ms', async () => {
         vi.useFakeTimers();
 
         render(<CopyButton getValue={getValue}/>);
         fireEvent.click(screen.getByRole('button'));
 
-        expect(screen.getByRole('button')).toHaveTextContent('Copiado');
+        expect(screen.getByRole('button')).toHaveTextContent('Copied');
 
         await act(async () => {
             vi.advanceTimersByTime(1500);
         });
 
-        expect(screen.getByRole('button')).toHaveTextContent('Copiar');
+        expect(screen.getByRole('button')).toHaveTextContent('Copy');
 
         vi.useRealTimers();
+    });
+
+    it('mostra a tradução como texto, sem interpretar HTML', () => {
+        l10n.config({contents: {Copied: '<img src=x data-testid="injetado">'}});
+        try {
+            render(<CopyButton getValue={getValue}/>);
+            fireEvent.click(screen.getByRole('button'));
+            expect(screen.queryByTestId('injetado')).toBeNull();
+            expect(screen.getByRole('button')).toHaveTextContent('<img src=x data-testid="injetado">');
+        } finally {
+            l10n.config({contents: {}});
+        }
     });
 
     it('não deve quebrar se clipboard não estiver disponível', () => {
@@ -86,6 +99,6 @@ describe('CopyButton', () => {
         });
 
         expect(writeText).toHaveBeenCalledWith('conteúdo copiado');
-        expect(screen.getByRole('button')).toHaveTextContent('Copiado');
+        expect(screen.getByRole('button')).toHaveTextContent('Copied');
     });
 });

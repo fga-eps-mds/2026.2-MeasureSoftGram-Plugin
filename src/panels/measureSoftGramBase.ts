@@ -1,5 +1,6 @@
-import {Disposable, Event, EventEmitter, ExtensionContext, Uri, Webview, window, workspace} from 'vscode';
+import {Disposable, env, Event, EventEmitter, ExtensionContext, l10n, Uri, Webview, window, workspace} from 'vscode';
 import * as defaultFs from 'fs/promises';
+import {readFileSync} from 'fs';
 import * as path from 'path';
 import {getNonce, getUri} from '../utilities/utilities';
 import {getOutputChannel} from '../utilities/log';
@@ -190,6 +191,21 @@ export abstract class MeasureSoftGramBase {
         this.post({command: 'settings_loaded', data: await loadSettingsForUi(this._settingsDeps)});
     }
 
+    protected async _postL10nBundle(): Promise<void> {
+        if (!l10n?.uri) {
+            return;
+        }
+        try {
+            const raw = workspace.fs?.readFile
+                ? Buffer.from(await workspace.fs.readFile(l10n.uri)).toString('utf-8')
+                : await defaultFs.readFile(l10n.uri.fsPath, 'utf-8');
+            const contents = JSON.parse(raw) as Record<string, string>;
+            this.post({command: 'l10n_bundle', contents});
+        } catch (err) {
+            this.logger()(`[ERRO] Não foi possível ler as traduções em ${l10n.uri.fsPath}: ${(err as Error).message}`);
+        }
+    }
+
     protected async _requireSettings(): Promise<FullSettings> {
         const settings = this._settings ?? (await this._loadPersistedSettings());
         return this._orgPkOverride !== null ? {...settings, organizationPk: this._orgPkOverride} : settings;
@@ -272,7 +288,7 @@ export abstract class MeasureSoftGramBase {
                 this._selectedRepo = null;
                 this.post({command: 'repos_loaded', repos: []});
                 this.onReposEmpty();
-                this.post({command: 'score_error', message: 'Nenhum repositório encontrado.', kind: 'not_found'});
+                this.post({command: 'score_error', message: l10n.t('No repositories found.'), kind: 'not_found'});
                 return;
             }
             if (result.switched) {
@@ -284,7 +300,7 @@ export abstract class MeasureSoftGramBase {
             this.post({command: 'repos_loaded', repos: this._context.repos, selectedRepoPk: result.selectedRepo.id, detected: result.detected});
             await this._loadScoreForSelected(fetchScore);
         } catch (err) {
-            const message = this._errorMessage(err, 'Erro ao buscar repositórios.');
+            const message = this._errorMessage(err, l10n.t('Error fetching repositories.'));
             this.logger()(`[ERRO] ${message}`);
             this.onScoreError();
             this.post({command: 'score_error', message, kind: this._errorKind(err)});
@@ -315,7 +331,7 @@ export abstract class MeasureSoftGramBase {
             this.onScoreLoaded(data);
             this.post({command: 'score_loaded', data: data as any});
         } catch (err) {
-            const message = this._errorMessage(err, 'Erro ao buscar métricas.');
+            const message = this._errorMessage(err, l10n.t('Error fetching metrics.'));
             this.logger()(`[ERRO] ${message}`);
             this.onScoreError();
             this.post({command: 'score_error', message, kind: this._errorKind(err)});
@@ -324,14 +340,36 @@ export abstract class MeasureSoftGramBase {
 
     // ── HTML da webview ────────────────────────────────────────────────────
 
+    protected _readL10nBundle(): Record<string, string> | undefined {
+        if (!l10n?.uri) {
+            return undefined;
+        }
+        try {
+            return JSON.parse(readFileSync(l10n.uri.fsPath, 'utf-8')) as Record<string, string>;
+        } catch (err) {
+            this.logger()(`[ERRO] Não foi possível ler as traduções em ${l10n.uri.fsPath}: ${(err as Error).message}`);
+            return undefined;
+        }
+    }
+
+    protected _l10nBundleScript(): string {
+        const bundle = this._readL10nBundle();
+        if (!bundle) {
+            return '';
+        }
+        const json = JSON.stringify(bundle).replace(/</g, '\\u003c');
+        return `<script type="application/json" id="l10n-bundle">${json}</script>`;
+    }
+
     protected _getWebviewContent(webview: Webview, extensionUri: Uri): string {
         const stylesUri = getUri(webview, extensionUri, ['webview-ui', 'build', 'assets', 'index.css']);
         const scriptUri = getUri(webview, extensionUri, ['webview-ui', 'build', 'assets', 'index.js']);
         const nonce = getNonce();
+        const l10nBundle = this._l10nBundleScript();
 
         return /*html*/ `
       <!DOCTYPE html>
-      <html lang="pt-BR">
+      <html lang="${env?.language || 'en'}">
         <head>
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -341,6 +379,7 @@ export abstract class MeasureSoftGramBase {
         </head>
         <body>
           <div id="root"></div>
+          ${l10nBundle}
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </body>
       </html>
@@ -384,7 +423,7 @@ export abstract class MeasureSoftGramBase {
                     await this._saveWorkflowFile(String(message.yaml), actionDeps);
                     this.post({command: 'action_saved'});
                 } catch (err) {
-                    actionDeps.window.showErrorMessage(`Não foi possível salvar o workflow: ${err}`);
+                    actionDeps.window.showErrorMessage(l10n.t('Could not save workflow: {0}', String(err)));
                 }
                 return true;
 
@@ -430,6 +469,9 @@ export abstract class MeasureSoftGramBase {
 
         switch (message.command) {
             case 'request_score':
+                await this._postL10nBundle();
+                await this._reloadIfConfigured(fetchRepos, fetchScore);
+                return true;
             case 'retry':
                 await this._reloadIfConfigured(fetchRepos, fetchScore);
                 return true;
@@ -509,7 +551,7 @@ export abstract class MeasureSoftGramBase {
             const dashboards = await this._fetchGrafanaDashboards(settings, this.logger());
             this.post({command: 'grafana_dashboards_loaded', dashboards});
         } catch (err) {
-            this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboards do Grafana.')});
+            this.post({command: 'grafana_error', message: this._errorMessage(err, l10n.t('Error fetching Grafana dashboards.'))});
         }
     }
 
@@ -530,7 +572,7 @@ export abstract class MeasureSoftGramBase {
             this._assertGrafanaUrlAllowed(detail.grafana_url, settings.grafanaAllowedHosts);
             this.post({command: 'grafana_dashboard_loaded', url: detail.grafana_url, title: detail.title});
         } catch (err) {
-            this.post({command: 'grafana_error', message: this._errorMessage(err, 'Erro ao buscar dashboard do Grafana.')});
+            this.post({command: 'grafana_error', message: this._errorMessage(err, l10n.t('Error fetching Grafana dashboard.'))});
         }
     }
 
@@ -543,17 +585,17 @@ export abstract class MeasureSoftGramBase {
         try {
             parsed = new URL(url);
         } catch {
-            throw new Error(`Endereço do dashboard inválido: ${url}`);
+            throw new Error(l10n.t('Invalid dashboard URL: {0}', url));
         }
         if (parsed.protocol !== 'https:') {
-            throw new Error(`O dashboard precisa ser servido por HTTPS: ${parsed.origin}`);
+            throw new Error(l10n.t('Dashboard must be served over HTTPS: {0}', parsed.origin));
         }
         if (allowedHosts.length) {
             const host = parsed.host.toLowerCase();
             const hostname = parsed.hostname.toLowerCase();
             const allowed = allowedHosts.map((h) => h.trim().toLowerCase()).filter(Boolean);
             if (!allowed.includes(host) && !allowed.includes(hostname)) {
-                throw new Error(`Endereço do dashboard não permitido: ${parsed.host}. Hosts permitidos: ${allowed.join(', ')}`);
+                throw new Error(l10n.t('Dashboard URL not allowed: {0}. Allowed hosts: {1}', parsed.host, allowed.join(', ')));
             }
         }
     }
@@ -563,7 +605,7 @@ export abstract class MeasureSoftGramBase {
     protected _workspacePath(deps: ActionDeps): string {
         const folder = deps.workspace.workspaceFolders?.[0];
         if (!folder) {
-            throw new Error('Abra uma pasta/workspace antes de salvar o workflow.');
+            throw new Error(l10n.t('Open a folder/workspace before saving the workflow.'));
         }
         return folder.uri.fsPath;
     }
@@ -632,7 +674,7 @@ export abstract class MeasureSoftGramBase {
             missing.push('MSGRAM Service Token');
         }
         if (missing.length) {
-            deps.window.showWarningMessage?.(`Configure em Settings antes de executar: ${missing.join(', ')}.`);
+            deps.window.showWarningMessage?.(l10n.t('Configure in Settings before running: {0}.', missing.join(', ')));
             return;
         }
 

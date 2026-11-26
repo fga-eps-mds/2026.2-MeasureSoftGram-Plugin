@@ -55,7 +55,7 @@ describe('ActionView', () => {
         render(<ActionView {...defaultProps} />);
 
         expect(
-            screen.getByText(/Edite o/i)
+            screen.getByText(/Edit msgram\.yml below/i)
         ).toBeInTheDocument();
     });
 
@@ -121,14 +121,14 @@ describe('ActionView', () => {
         ).toHaveTextContent('foo: bar');
     });
 
-    it('mostra "arquivo existente" quando yamlExists é true', () => {
+    it('mostra "Existing file" quando yamlExists é true', () => {
         render(<ActionView {...defaultProps} yamlExists={true}/>);
-        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/arquivo existente/i);
+        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/existing file/i);
     });
 
-    it('mostra "novo arquivo" quando yamlExists é false', () => {
+    it('mostra "New file" quando yamlExists é false', () => {
         render(<ActionView {...defaultProps} yamlExists={false}/>);
-        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/novo arquivo/i);
+        expect(screen.getByTestId('yaml-origin')).toHaveTextContent(/new file/i);
     });
 
     it('não mostra o selo enquanto não sabe se o arquivo existe', () => {
@@ -140,25 +140,35 @@ describe('ActionView', () => {
         render(<ActionView {...defaultProps} blocked={{reason: 'docker_missing'}}/>);
         const notice = screen.getByTestId('action-blocked');
         expect(notice).toHaveTextContent(/Docker/);
-        expect(notice).toHaveTextContent(/pré-requisito/i);
+        expect(notice).toHaveTextContent(/required/i);
         const link = notice.querySelector('a') as HTMLAnchorElement;
         expect(link.getAttribute('href')).toBe('https://docs.docker.com/get-docker/');
     });
 
-    it('mostra "inicie o Docker" quando bloqueado por docker_stopped, com o detalhe', () => {
+    it('mostra "Start Docker" quando bloqueado por docker_stopped, com o detalhe', () => {
         render(<ActionView {...defaultProps} blocked={{reason: 'docker_stopped', detail: 'daemon off'}}/>);
         const notice = screen.getByTestId('action-blocked');
-        expect(notice).toHaveTextContent(/inicie o Docker/i);
+        expect(notice).toHaveTextContent(/start docker/i);
         expect(notice).toHaveTextContent('daemon off');
     });
 
-    it('mostra "já existe uma execução" quando bloqueado por already_running', () => {
+    it('mostra "already running" quando bloqueado por already_running', () => {
         render(<ActionView {...defaultProps} blocked={{reason: 'already_running'}}/>);
-        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/já existe uma execução/i);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/already running/i);
     });
 
     it('não mostra o aviso de bloqueio quando blocked é null', () => {
         render(<ActionView {...defaultProps} blocked={null}/>);
         expect(screen.queryByTestId('action-blocked')).not.toBeInTheDocument();
+    });
+
+    it('mostra aviso de pasta e erro genérico no blocked', () => {
+        const {rerender} = render(<ActionView {...defaultProps} blocked={{reason: 'no_workspace', detail: 'sem pasta'}}/>);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/Open a folder in VS Code/);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent('sem pasta');
+
+        rerender(<ActionView {...defaultProps} blocked={{reason: 'other' as never, detail: 'falha'}}/>);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent(/Could not run/);
+        expect(screen.getByTestId('action-blocked')).toHaveTextContent('falha');
     });
 });

@@ -1,4 +1,4 @@
-import {commands, ExtensionContext, window} from "vscode";
+import {commands, ExtensionContext, l10n, window, workspace} from "vscode";
 import {MeasureSoftGramPanel} from "./panels/measureSoftGramPanel";
 import {MeasureSoftGramSidebar} from "./panels/measureSoftGramSidebar";
 import {MsgramStatusBar} from "./statusbar/msgramStatusBar";
@@ -9,7 +9,6 @@ import {loadSettings, makeSettingsDeps, updateProjectSettings} from "./config/se
 import {registerWorkspaceRepo} from "./services/registerRepo";
 import {detectWorkspaceHints} from "./utilities/workspaceRepo";
 import {getOutputChannel} from "./utilities/log";
-import {workspace} from "vscode";
 
 /** API exposta em `extension.exports`, usada só pelo teste de integração. */
 export interface MsgramExtensionApi {
@@ -20,13 +19,13 @@ export interface MsgramExtensionApi {
 
 export function activate(context: ExtensionContext): MsgramExtensionApi {
     const {sidebar, tree} = _activate(
-        context, {commands, window}, MeasureSoftGramPanel, MeasureSoftGramSidebar, MsgramStatusBar,
+        context, {commands, window, l10n}, MeasureSoftGramPanel, MeasureSoftGramSidebar, MsgramStatusBar,
         (statusBar) => new QualityTreeProvider({settingsDeps: makeSettingsDeps(context), statusBar}),
         async (afterSuccess) => {
             const deps = makeSettingsDeps(context);
             const settings = await loadSettings(deps);
             if (!settings.token) {
-                void window.showWarningMessage('Informe o token do MeasureSoftGram em Configurar antes de cadastrar o repositório.');
+                void window.showWarningMessage(l10n.t('Enter the MeasureSoftGram token in Settings before registering the repository.'));
                 return;
             }
             const folder = workspace.workspaceFolders?.[0];
@@ -49,7 +48,7 @@ export function activate(context: ExtensionContext): MsgramExtensionApi {
             } catch (err) {
                 const message = err instanceof Error ? err.message : String(err);
                 getOutputChannel().appendLine(`[registro] erro: ${message}`);
-                void window.showErrorMessage(`Não foi possível cadastrar o repositório: ${message}`);
+                void window.showErrorMessage(l10n.t('Could not register repository: {0}', message));
             }
         },
     );

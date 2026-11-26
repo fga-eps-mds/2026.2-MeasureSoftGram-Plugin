@@ -50,7 +50,7 @@ describe('Sidebar', () => {
 
         it('deve exibir o subtítulo de análise multidimensional', () => {
             render(<Sidebar {...DEFAULT_PROPS}/>);
-            expect(screen.getByText(/Análise multidimensional/)).toBeInTheDocument();
+            expect(screen.getByText(/Multidimensional software quality analysis/)).toBeInTheDocument();
         });
 
         it('deve exibir o rótulo "TSQMI" no lugar do rótulo antigo "Nota do Produto"', () => {
@@ -89,15 +89,31 @@ describe('Sidebar', () => {
             expect(onSelectRepo).toHaveBeenCalledWith(2);
         });
 
-        it('deve exibir "produto não encontrado" e desabilitar option quando scoreError', () => {
+        it('deve exibir "product not found" e desabilitar option quando scoreError', () => {
             render(<Sidebar {...DEFAULT_PROPS} repos={REPOS} scoreError={true}/>);
-            const option = screen.getByRole('option', {name: 'produto não encontrado'});
+            const option = screen.getByRole('option', {name: 'product not found'});
             expect(option).toBeDisabled();
         });
 
         it('deve usar value vazio no select quando scoreError', () => {
             render(<Sidebar {...DEFAULT_PROPS} repos={REPOS} scoreError={true} selectedRepoPk={1}/>);
             expect(screen.getByRole('combobox')).toHaveValue('');
+        });
+
+        it('renderiza seletor de organização quando há mais de uma e chama onSelectOrg', () => {
+            const onSelectOrg = vi.fn();
+            render(
+                <Sidebar
+                    {...DEFAULT_PROPS}
+                    organizations={[{id: 1, name: 'Org A'}, {id: 2, name: 'Org B'}]}
+                    selectedOrgPk={1}
+                    onSelectOrg={onSelectOrg}
+                />,
+            );
+            const orgSelect = document.getElementById('org-select') as HTMLSelectElement;
+            expect(orgSelect).toBeInTheDocument();
+            fireEvent.change(orgSelect, {target: {value: '2'}});
+            expect(onSelectOrg).toHaveBeenCalledWith(2);
         });
     });
 
@@ -120,24 +136,24 @@ describe('Sidebar', () => {
 
         it('deve exibir aviso de métricas não calculadas quando noData', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={{...SCORE_DATA, noData: true}}/>);
-            expect(screen.getByText(/Métricas ainda não calculadas/)).toBeInTheDocument();
+            expect(screen.getByText(/Metrics not yet calculated/)).toBeInTheDocument();
         });
 
         it('não deve exibir aviso de noData quando scoreLoading', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={{...SCORE_DATA, noData: true}} scoreLoading={true}/>);
-            expect(screen.queryByText(/Métricas ainda não calculadas/)).not.toBeInTheDocument();
+            expect(screen.queryByText(/Metrics not yet calculated/)).not.toBeInTheDocument();
         });
     });
 
     describe('status', () => {
-        it('deve exibir "Conectado" quando há scoreData', () => {
+        it('deve exibir "Connected" quando há scoreData', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={SCORE_DATA}/>);
-            expect(screen.getByText('Conectado')).toBeInTheDocument();
+            expect(screen.getByText('Connected')).toBeInTheDocument();
         });
 
-        it('deve exibir "Sem dados" quando scoreData é null', () => {
+        it('deve exibir "No data" quando scoreData é null', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={null}/>);
-            expect(screen.getByText('Sem dados')).toBeInTheDocument();
+            expect(screen.getByText('No data')).toBeInTheDocument();
         });
 
         it('marca o dot como "on" quando há scoreData (cor vem do tema via CSS)', () => {
@@ -155,19 +171,19 @@ describe('Sidebar', () => {
     });
 
     describe('características', () => {
-        it('deve exibir "carregando..." quando scoreLoading é true', () => {
+        it('deve exibir "loading..." quando scoreLoading é true', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreLoading={true}/>);
-            expect(screen.getByText(/carregando\.\.\./)).toBeInTheDocument();
+            expect(screen.getByText(/loading\.\.\./)).toBeInTheDocument();
         });
 
-        it('deve exibir "carregando..." quando scoreData é null sem estar carregando', () => {
+        it('deve exibir "loading..." quando scoreData é null sem estar carregando', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={null} scoreLoading={false}/>);
-            expect(screen.getByText(/carregando\.\.\./)).toBeInTheDocument();
+            expect(screen.getByText(/loading\.\.\./)).toBeInTheDocument();
         });
 
-        it('deve exibir "nenhum dado disponível" quando noData', () => {
+        it('deve exibir "no data available" quando noData', () => {
             render(<Sidebar {...DEFAULT_PROPS} scoreData={{score: 0, characteristics: [], noData: true, lastAnalysisAt: null, hasGoal: false}}/>);
-            expect(screen.getByText('nenhum dado disponível')).toBeInTheDocument();
+            expect(screen.getByText('no data available')).toBeInTheDocument();
         });
 
         it('deve renderizar o nome de cada característica', () => {

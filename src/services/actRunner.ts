@@ -13,6 +13,7 @@
  * via `sharedActRunner()`.
  */
 import {ChildProcess, spawn as nodeSpawn, SpawnOptions} from 'node:child_process';
+import {l10n} from 'vscode';
 
 export interface ActRunnerDeps {
     spawn: (command: string, args: string[], options: SpawnOptions) => ChildProcess;
@@ -88,7 +89,7 @@ export class ActRunner {
                 try {
                     child.kill('SIGKILL');
                 } catch { /* já morreu */ }
-                finish({ok: false, reason: 'docker_stopped', detail: `docker info não respondeu em ${Math.round(timeoutMs / 1000)} s`});
+                finish({ok: false, reason: 'docker_stopped', detail: l10n.t('docker info did not respond within {0} s', Math.round(timeoutMs / 1000))});
             }, timeoutMs);
 
             child.stdout?.on('data', (c: Buffer | string) => (out += String(c)));
@@ -102,7 +103,7 @@ export class ActRunner {
                 if (code === 0) {
                     finish({ok: true, version: out.trim()});
                 } else {
-                    finish({ok: false, reason: 'docker_stopped', detail: (err || out).trim() || `docker info saiu com código ${code}`});
+                    finish({ok: false, reason: 'docker_stopped', detail: (err || out).trim() || l10n.t('docker info exited with code {0}', String(code))});
                 }
             });
         });
@@ -136,7 +137,7 @@ export class ActRunner {
         try {
             child = this._deps.spawn('docker', args, {cwd: opts.dockerDir, env, stdio: ['ignore', 'pipe', 'pipe']});
         } catch (e) {
-            opts.onLine(`Não foi possível iniciar o Docker: ${(e as Error).message}`, true);
+            opts.onLine(l10n.t('Could not start Docker: {0}', (e as Error).message), true);
             opts.onDone({success: false, exitCode: -1});
             return true;
         }
@@ -163,7 +164,7 @@ export class ActRunner {
         };
 
         child.on('error', (e: Error) => {
-            opts.onLine(`Erro ao executar o Docker: ${mask(e.message)}`, true);
+            opts.onLine(l10n.t('Error running Docker: {0}', mask(e.message)), true);
             finish({success: false, exitCode: -1});
         });
         child.on('close', (code) => {

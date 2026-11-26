@@ -1,4 +1,5 @@
 import React from 'react';
+import * as l10n from '@vscode/l10n';
 import type {OrgItem, RepoItem, ScoreData, TabName} from '../types';
 import {getCharStatus} from '../utils/helpers';
 
@@ -33,7 +34,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
                 <div className="srow muted">
                     <i className="codicon codicon-loading codicon-modifier-spin run-anim" aria-hidden="true"/>
-                    <span className="stxt">carregando...</span>
+                    <span className="stxt">{l10n.t('loading...')}</span>
                 </div>
             );
         }
@@ -41,7 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             return (
                 <div className="srow muted">
                     <i className="codicon codicon-circle-slash" aria-hidden="true"/>
-                    <span className="stxt">nenhum dado disponível</span>
+                    <span className="stxt">{l10n.t('no data available')}</span>
                 </div>
             );
         }
@@ -70,14 +71,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {/* Header com branding */}
             <div className="brand-box">
                 <div className="brand-title">MeasureSoftGram</div>
-                <div className="brand-sub">Análise multidimensional da qualidade de software</div>
+                <div className="brand-sub">{l10n.t('Multidimensional software quality analysis')}</div>
             </div>
 
             {/* Seletor de organização: só quando a conta tem mais de uma */}
             {organizations.length > 1 && (
                 <div className="sblock">
                     <div className="slbl">
-                        <i className="codicon codicon-organization" aria-hidden="true"/> Organização
+                        <i className="codicon codicon-organization" aria-hidden="true"/> {l10n.t('Organization')}
                     </div>
                     <select
                         id="org-select"
@@ -96,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             {repos.length > 0 && (
                 <div className="sblock">
                     <div className="slbl">
-                        <i className="codicon codicon-repo" aria-hidden="true"/> Repositório
+                        <i className="codicon codicon-repo" aria-hidden="true"/> {l10n.t('Repository')}
                     </div>
                     <select
                         id="repo-select"
@@ -105,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                         onChange={(e) => onSelectRepo(Number(e.target.value))}
                     >
                         {scoreError
-                            ? <option value="" disabled>produto não encontrado</option>
+                            ? <option value="" disabled>{l10n.t('product not found')}</option>
                             : repos.map((r) => (
                                 <option key={r.id} value={r.id}>{r.name}</option>
                             ))
@@ -135,12 +136,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 {!scoreLoading && scoreData?.noData && (
                     <div className="notif warn-n compact">
                         <i className="codicon codicon-warning" aria-hidden="true"/>
-                        <span>Métricas ainda não calculadas para este repositório.</span>
+                        <span>{l10n.t('Metrics not yet calculated for this repository.')}</span>
                     </div>
                 )}
 
                 <div className="sec-title">
-                    <i className="codicon codicon-graph" aria-hidden="true"/> Características
+                    <i className="codicon codicon-graph" aria-hidden="true"/> {l10n.t('Characteristics')}
                 </div>
 
                 <div id="chars-sidebar">
@@ -150,11 +151,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <div className="divider"/>
 
                 <div className="sec-title">
-                    <i className="codicon codicon-info" aria-hidden="true"/> Status
+                    <i className="codicon codicon-info" aria-hidden="true"/> {l10n.t('Status')}
                 </div>
                 <div className="srow">
                     <div className={`sdot ${scoreData ? 'on' : 'off'}`}/>
-                    <span className="stxt strong">{scoreData ? 'Conectado' : 'Sem dados'}</span>
+                    <span className="stxt strong">{scoreData ? l10n.t('Connected') : l10n.t('No data')}</span>
                 </div>
             </div>
         </div>

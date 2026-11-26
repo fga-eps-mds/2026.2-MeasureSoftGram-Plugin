@@ -1,4 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
+import * as l10n from '@vscode/l10n';
 import {Sidebar} from './components/Sidebar';
 import {Tabs} from './components/Tabs';
 import {DashboardView} from './components/DashboardView';
@@ -78,6 +79,7 @@ const App: React.FC = () => {
     const [yamlExists, setYamlExists] = useState<boolean | null>(null);
     const [actionSavedFeedback, setActionSavedFeedback] = useState(false);
     const [actionAlert, setActionAlert] = useState<string | null>(null);
+    const [l10nVersion, setL10nVersion] = useState(0);
 
     useEffect(() => {
         vscode.postMessage({command: 'request_score'});
@@ -90,6 +92,11 @@ const App: React.FC = () => {
             }
             const msg = event.data;
             switch (msg.command) {
+
+                case 'l10n_bundle':
+                    l10n.config({contents: msg.contents});
+                    setL10nVersion((v) => v + 1);
+                    break;
 
                 case 'not_configured':
                     setLoadState('not_configured');
@@ -153,15 +160,15 @@ const App: React.FC = () => {
                     setIsRunning(false);
                     appendLog(
                         msg.success
-                            ? 'Execução concluída com sucesso.'
-                            : `Execução encerrou com código ${msg.exitCode}.`,
+                            ? l10n.t('Execution completed successfully.')
+                            : l10n.t('Execution exited with code {0}.', msg.exitCode),
                         !msg.success,
                     );
                     break;
 
                 case 'analysis_stopped':
                     setIsRunning(false);
-                    appendLog('Execução interrompida pelo usuário.', true);
+                    appendLog(l10n.t('Execution stopped by user.'), true);
                     break;
 
                 case 'yaml_loaded':
@@ -277,9 +284,10 @@ const App: React.FC = () => {
     const handleRunAction = () => {
         const missing = getMissingSettings(settings);
         if (missing.length > 0) {
-            const message =
-                'Preencha os campos obrigatórios em Settings antes de rodar a pipeline: ' +
-                missing.map((m) => m.label).join(', ');
+            const message = l10n.t(
+                'Fill in the required fields in Settings before running the pipeline: {0}',
+                missing.map((m) => m.label).join(', '),
+            );
             setActionAlert(message);
             vscode.postMessage({command: 'show_warning', message});
             return;
@@ -313,7 +321,7 @@ const App: React.FC = () => {
 
             <Tabs active={activeTab} onSelect={showTab}/>
 
-            <div className="pc">
+            <div className="pc" data-l10n-version={l10nVersion}>
 
                 {activeTab === 'dashboard' && loadState === 'not_configured' && (
                     <NotConfiguredView
