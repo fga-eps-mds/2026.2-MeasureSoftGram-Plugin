@@ -95,7 +95,7 @@ export async function registerWorkspaceRepo(
         if (!productName || !productName.trim()) {
             return {kind: 'cancelled'};
         }
-        product = await createProduct(settings, org.id, {name: productName.trim(), description: l10n.t('Created by the VS Code extension')}, log);
+        product = await createProduct(settings, org.id, {name: productName.trim(), description: 'Created by the VS Code extension'}, log);
         log(`[registro] produto criado: ${product.name} (id ${product.id})`);
     }
 
@@ -110,7 +110,7 @@ export async function registerWorkspaceRepo(
     const repo = await createRepository(settings, org.id, product.id, {
         name,
         url: hints.remoteUrl,
-        description: l10n.t('Registered by the VS Code extension from {0}', hints.remoteUrl ?? hints.folderName ?? name),
+        description: `Registered by the VS Code extension from ${hints.remoteUrl ?? hints.folderName ?? name}`,
         platform: 'github',
     }, log);
     log(`[registro] repositório criado: ${repo.name} (id ${repo.id}) em ${org.name}/${product.name}`);
