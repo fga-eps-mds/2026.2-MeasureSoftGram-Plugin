@@ -1,5 +1,6 @@
 import React from 'react';
 import * as l10n from '@vscode/l10n';
+import {renderSlots, slot} from '../../utils/l10nSlots';
 import {YamlEditor} from './YamlEditor.tsx';
 import {SaveButton} from './SaveButton.tsx';
 import {CopyButton} from './CopyButton.tsx';
@@ -18,8 +19,9 @@ function blockedMessage(b: ActionBlocked): React.ReactNode {
         case 'docker_missing':
             return (
                 <>
-                    {l10n.t('Docker is required to run the Action locally and was not found.')}{' '}
-                    <a href={DOCKER_INSTALL_URL} target="_blank" rel="noreferrer">{l10n.t('Install Docker')}</a> {l10n.t('and try again.')}
+                    {renderSlots(l10n.t('Docker is required to run the Action locally and was not found. {0} and try again.', slot(0)), [
+                        <a key="install" href={DOCKER_INSTALL_URL} target="_blank" rel="noreferrer">{l10n.t('Install Docker')}</a>,
+                    ])}
                 </>
             );
         case 'docker_stopped':

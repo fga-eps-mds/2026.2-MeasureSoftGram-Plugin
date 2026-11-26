@@ -1,5 +1,6 @@
 import React from 'react';
 import * as l10n from '@vscode/l10n';
+import {renderSlots, slot} from '../utils/l10nSlots';
 import type {ScoreData} from '../types';
 import {formatAbsolute, formatRelative, getCharStatus} from '../utils/helpers';
 
@@ -82,7 +83,7 @@ const CharacteristicRow: React.FC<{ c: Characteristic }> = ({c}) => {
                 <span className="char-name">{c.name}</span>
                 <span className={`char-val ${status}`}>{c.value.toFixed(2)}</span>
                 <span className="char-goal">
-                    {l10n.t('goal')} {c.goal === null ? '—' : c.goal.toFixed(2)} {mark}
+                    {l10n.t('goal {0}', c.goal === null ? '—' : c.goal.toFixed(2))} {mark}
                 </span>
             </div>
             <div className="char-bar">
@@ -170,7 +171,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <i className="codicon codicon-target" aria-hidden="true"/> {l10n.t('Warning: characteristic below goal')}
                     </div>
                     <div className="cw-desc">
-                        {l10n.t('{0} is at {1}, below the team goal of {2}.', worstChar.name, worstChar.value.toFixed(2), worstChar.goal.toFixed(2))}
+                        {renderSlots(l10n.t('{0} is at {1}, below the team goal of {2}.', slot(0), worstChar.value.toFixed(2), worstChar.goal.toFixed(2)), [<strong key="name" className="warn-strong">{worstChar.name}</strong>])}
                     </div>
                 </div>
             )}
@@ -203,7 +204,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <div className="hero-meta">
                             {scoreData && !hasGoal
                                 ? <span className="chip muted">{l10n.t('no goal defined for this product')}</span>
-                                : <>{l10n.t('release goal:')} <strong>{avgGoal !== null ? avgGoal.toFixed(2) : '—'}</strong> · {metaStatus}</>}
+                                : <>{renderSlots(l10n.t('release goal: {0}', slot(0)), [<strong key="goal">{avgGoal !== null ? avgGoal.toFixed(2) : '—'}</strong>])} · {metaStatus}</>}
                         </div>
                     </div>
                 </div>

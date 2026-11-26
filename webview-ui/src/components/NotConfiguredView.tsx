@@ -1,5 +1,6 @@
 import React from 'react';
 import * as l10n from '@vscode/l10n';
+import {renderSlots, slot} from '../utils/l10nSlots';
 import type {MissingSetting} from '../types';
 
 interface NotConfiguredViewProps {
@@ -44,7 +45,7 @@ export const NotConfiguredView: React.FC<NotConfiguredViewProps> = ({missing, un
             <div className="notif warn-n" style={{marginBottom: 14}} data-testid="unregistered-repo">
                 <i className="codicon codicon-repo" aria-hidden="true"/>
                 <span>
-                    {l10n.t('Repository {0} is not registered in any product of this account. Register it with one click, or enter the product below.', unregisteredRepo)}
+                    {renderSlots(l10n.t('Repository {0} is not registered in any product of this account. Register it with one click, or enter the product below.', slot(0)), [<strong key="repo">{unregisteredRepo}</strong>])}
                 </span>
             </div>
         )}

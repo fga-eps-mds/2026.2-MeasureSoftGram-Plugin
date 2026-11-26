@@ -1,5 +1,6 @@
 import React, {useState} from 'react';
 import * as l10n from '@vscode/l10n';
+import {renderSlots, slot} from '../utils/l10nSlots';
 import type {SecretKey, SettingsForUi, SettingsPayload} from '../types';
 import {getVSCodeAPI} from '../utils/vscode';
 
@@ -101,15 +102,18 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="fd token-status" data-testid={testId}>
             {saved ? (
                 <>
-                    <i className="codicon codicon-lock" aria-hidden="true"/> {l10n.t('saved ✓ in Secret Storage. Enter a new value to replace, or')}{' '}
-                    <button
-                        type="button"
-                        className="link-btn"
-                        data-testid={clearTestId}
-                        onClick={() => onClearSecret(key)}
-                    >
-                        {l10n.t('remove')}
-                    </button>.
+                    <i className="codicon codicon-lock" aria-hidden="true"/>{' '}
+                    {renderSlots(l10n.t('saved ✓ in Secret Storage. Enter a new value to replace, or {0}.', slot(0)), [
+                        <button
+                            key="remove"
+                            type="button"
+                            className="link-btn"
+                            data-testid={clearTestId}
+                            onClick={() => onClearSecret(key)}
+                        >
+                            {l10n.t('remove')}
+                        </button>,
+                    ])}
                 </>
             ) : (
                 <>
@@ -125,7 +129,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 <div className="notif" style={{marginBottom: 14}}>
                     <i className="codicon codicon-info" aria-hidden="true"/>
                     <span>
-                        {l10n.t('Tokens are stored in VS Code Secret Storage. Other fields are stored in workspace settings.json (msgram. prefix).')}
+                        {renderSlots(l10n.t('Tokens are stored in VS Code Secret Storage. Other fields are stored in workspace {0} ({1} prefix).', slot(0), slot(1)), [<code key="settings">settings.json</code>, <code key="prefix">msgram.</code>])}
                     </span>
                 </div>
 
@@ -211,7 +215,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                 <div className="fg">
                     <label className="fl" htmlFor="inp-workflowname">Workflow Name</label>
-                    <div className="fd">{l10n.t('Name of the build workflow watched by the Action (on: workflow_run)')}</div>
+                    <div className="fd">{renderSlots(l10n.t('Name of the build workflow watched by the Action ({0})', slot(0)), [<code key="trigger">on: workflow_run</code>])}</div>
                     <input
                         className="fi"
                         type="text"

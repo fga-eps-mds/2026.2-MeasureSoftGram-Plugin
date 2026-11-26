@@ -1,5 +1,7 @@
 import {fireEvent, render, screen} from '@testing-library/react';
 import {describe, expect, it, vi} from 'vitest';
+import * as l10n from '@vscode/l10n';
+import ptBr from '../../../../l10n/bundle.l10n.pt-br.json';
 import {NotConfiguredView} from '../../components/NotConfiguredView';
 
 describe('NotConfiguredView', () => {
@@ -56,5 +58,17 @@ describe('NotConfiguredView', () => {
     it('nunca exibe score, repositório de exemplo ou aviso de meta', () => {
         const {container} = render(<NotConfiguredView missing={['token']} onOpenSettings={() => {}} onOpenVscodeSettings={() => {}}/>);
         expect(container.textContent).not.toMatch(/0\.94|mock-repo|abaixo da meta/i);
+    });
+
+    it('destaca o repositório não cadastrado em negrito, também na tradução', () => {
+        l10n.config({contents: ptBr});
+        try {
+            render(<NotConfiguredView missing={['productName']} unregisteredRepo="meu-repo" onOpenSettings={() => {}} onOpenVscodeSettings={() => {}}/>);
+            const notice = screen.getByTestId('unregistered-repo');
+            expect(notice.querySelector('strong')?.textContent).toBe('meu-repo');
+            expect(notice).toHaveTextContent('O repositório meu-repo não está cadastrado');
+        } finally {
+            l10n.config({contents: {}});
+        }
     });
 });

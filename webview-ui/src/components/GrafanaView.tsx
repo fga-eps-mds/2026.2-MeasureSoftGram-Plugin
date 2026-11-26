@@ -1,5 +1,6 @@
 import React from 'react';
 import * as l10n from '@vscode/l10n';
+import {renderSlots, slot} from '../utils/l10nSlots';
 import type { GrafanaDashboard } from '../types';
 
 interface GrafanaViewProps {
@@ -68,7 +69,7 @@ export const GrafanaView: React.FC<GrafanaViewProps> = ({
         <div className="notif warn-n">
           <i className="codicon codicon-info" />
           <span>
-            {l10n.t('No product loaded. Open the Panel tab and wait for metrics to load before accessing dashboards.')}
+            {renderSlots(l10n.t('No product loaded. Open the {0} tab and wait for metrics to load before accessing dashboards.', slot(0)), [<strong key="panel">{l10n.t('Panel')}</strong>])}
           </span>
         </div>
       )}
