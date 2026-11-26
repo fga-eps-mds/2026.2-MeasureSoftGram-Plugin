@@ -1,5 +1,6 @@
 import {Disposable, env, Event, EventEmitter, ExtensionContext, l10n, Uri, Webview, window, workspace} from 'vscode';
 import * as defaultFs from 'fs/promises';
+import {readFileSync} from 'fs';
 import * as path from 'path';
 import {getNonce, getUri} from '../utilities/utilities';
 import {getOutputChannel} from '../utilities/log';
@@ -339,10 +340,32 @@ export abstract class MeasureSoftGramBase {
 
     // ── HTML da webview ────────────────────────────────────────────────────
 
+    protected _readL10nBundle(): Record<string, string> | undefined {
+        if (!l10n?.uri) {
+            return undefined;
+        }
+        try {
+            return JSON.parse(readFileSync(l10n.uri.fsPath, 'utf-8')) as Record<string, string>;
+        } catch (err) {
+            this.logger()(`[ERRO] Não foi possível ler as traduções em ${l10n.uri.fsPath}: ${(err as Error).message}`);
+            return undefined;
+        }
+    }
+
+    protected _l10nBundleScript(): string {
+        const bundle = this._readL10nBundle();
+        if (!bundle) {
+            return '';
+        }
+        const json = JSON.stringify(bundle).replace(/</g, '\\u003c');
+        return `<script type="application/json" id="l10n-bundle">${json}</script>`;
+    }
+
     protected _getWebviewContent(webview: Webview, extensionUri: Uri): string {
         const stylesUri = getUri(webview, extensionUri, ['webview-ui', 'build', 'assets', 'index.css']);
         const scriptUri = getUri(webview, extensionUri, ['webview-ui', 'build', 'assets', 'index.js']);
         const nonce = getNonce();
+        const l10nBundle = this._l10nBundleScript();
 
         return /*html*/ `
       <!DOCTYPE html>
@@ -356,6 +379,7 @@ export abstract class MeasureSoftGramBase {
         </head>
         <body>
           <div id="root"></div>
+          ${l10nBundle}
           <script type="module" nonce="${nonce}" src="${scriptUri}"></script>
         </body>
       </html>

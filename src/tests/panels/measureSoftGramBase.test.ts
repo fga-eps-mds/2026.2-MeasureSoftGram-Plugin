@@ -865,6 +865,37 @@ suite('MeasureSoftGramBase', () => {
         }
     });
 
+    test('o HTML do webview já traz o bundle de tradução, com < escapado', () => {
+        const vscode = require('vscode');
+        const fs = require('fs');
+        const os = require('os');
+        const path = require('path');
+        const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'l10n-')), 'bundle.json');
+        fs.writeFileSync(file, JSON.stringify({ Panel: 'Painel', Tag: '</script><b>' }));
+        const originalUri = vscode.l10n.uri;
+        vscode.l10n.uri = { fsPath: file };
+        try {
+            const html = new TestableBase(makeExtensionContext()).getWebviewContent();
+            const match = /<script type="application\/json" id="l10n-bundle">(.*?)<\/script>/.exec(html);
+            assert.ok(match, html);
+            assert.ok(!match[1].includes('<'));
+            assert.deepStrictEqual(JSON.parse(match[1]), { Panel: 'Painel', Tag: '</script><b>' });
+        } finally {
+            vscode.l10n.uri = originalUri;
+        }
+    });
+
+    test('sem bundle de tradução o HTML não traz o script do bundle', () => {
+        const vscode = require('vscode');
+        const originalUri = vscode.l10n.uri;
+        vscode.l10n.uri = undefined;
+        try {
+            assert.ok(!new TestableBase(makeExtensionContext()).getWebviewContent().includes('l10n-bundle'));
+        } finally {
+            vscode.l10n.uri = originalUri;
+        }
+    });
+
     test('bundle de tradução inválido é registrado no log e o webview segue em inglês', async () => {
         const vscode = require('vscode');
         const path = require('path');
