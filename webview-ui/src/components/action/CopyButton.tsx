@@ -1,4 +1,4 @@
-import React, {useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import * as l10n from '@vscode/l10n';
 
 interface CopyButtonProps {
@@ -6,23 +6,24 @@ interface CopyButtonProps {
 }
 
 export const CopyButton: React.FC<CopyButtonProps> = ({getValue}) => {
-    const btnRef = useRef<HTMLButtonElement>(null);
+    const [copied, setCopied] = useState(false);
+    const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    useEffect(() => () => {
+        if (timer.current) clearTimeout(timer.current);
+    }, []);
 
     const handleCopy = () => {
         navigator.clipboard?.writeText(getValue()).catch(() => {
         });
-        if (!btnRef.current) return;
-        btnRef.current.innerHTML = `<i class="codicon codicon-check"></i> ${l10n.t('Copied')}`;
-        setTimeout(() => {
-            if (btnRef.current) {
-                btnRef.current.innerHTML = `<i class="codicon codicon-copy"></i> ${l10n.t('Copy')}`;
-            }
-        }, 1500);
+        setCopied(true);
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => setCopied(false), 1500);
     };
 
     return (
-        <button ref={btnRef} className="btn" onClick={handleCopy} style={{width: '100%', justifyContent: 'center'}}>
-            <i className="codicon codicon-copy"/> {l10n.t('Copy')}
+        <button className="btn" onClick={handleCopy} style={{width: '100%', justifyContent: 'center'}}>
+            <i className={`codicon ${copied ? 'codicon-check' : 'codicon-copy'}`}/> {copied ? l10n.t('Copied') : l10n.t('Copy')}
         </button>
     );
 };
