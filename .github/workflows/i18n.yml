@@ -1,0 +1,55 @@
+name: Atualizar template de traduções
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - 'src/**'
+      - 'webview-ui/src/**'
+      - 'package.json'
+      - '.github/workflows/i18n.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: i18n-template
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  template:
+    name: Exportar o bundle do vscode.l10n
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências da extensão
+        run: npm ci
+
+      - name: Exportar os textos para o bundle en
+        run: npm run l10n:export
+
+      - name: Abrir ou atualizar o PR do template
+        uses: peter-evans/create-pull-request@3ffccacd46053766916f087ce41d627c0b8cf2d1 # v8.1.3
+        with:
+          token: ${{ secrets.WEBLATE_GITHUB_TOKEN || github.token }}
+          branch: i18n/template
+          base: develop
+          add-paths: l10n/bundle.l10n.json
+          commit-message: 'chore(l10n): atualiza o bundle en com os textos novos do código'
+          title: 'chore(l10n): atualiza o bundle en com os textos novos do código'
+          body: |
+            Textos exportados do código por `npm run l10n:export` depois do último push no `develop`.
+
+            Depois do merge, o Weblate passa a mostrar os textos novos para tradução.
+          delete-branch: true

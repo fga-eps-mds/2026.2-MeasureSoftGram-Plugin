@@ -38,6 +38,14 @@ jobs:
       - name: Lint da interface
         run: npm run lint:webview
 
+      - name: Conferir o bundle de tradução
+        run: |
+          npm run l10n:export
+          git diff --exit-code -- l10n/bundle.l10n.json || {
+            echo "::error file=l10n/bundle.l10n.json::Bundle de tradução desatualizado. Rode npm run l10n:export e versione o l10n/bundle.l10n.json."
+            exit 1
+          }
+
       - name: Compilar extensão
         run: npm run compile
 
