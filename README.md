@@ -123,7 +123,10 @@ npm run test:unit                     # extensão, com o 'vscode' simulado
 npm run test:integration              # abre um VS Code real e ativa a extensão
 npm run build:webview && npm run compile
 npm run package                       # gera measuresoftgram-<versão>.vsix
+npm run l10n:export                   # atualiza o l10n/bundle.l10n.json com os textos do código
 ```
+
+O `test.yml` falha se o `l10n/bundle.l10n.json` versionado estiver desatualizado. A cada push no `develop`, o workflow `i18n.yml` roda o `npm run l10n:export` e abre (ou atualiza) o PR `i18n/template` com os textos novos; as traduções são feitas no Weblate da Platform e voltam pelo PR `weblate/translations`.
 
 O `.vsix` sai com a interface compilada e sem relatórios de cobertura. A publicação é automática, pelo workflow **Release & Marketplace** com o [Release Please](https://github.com/googleapis/release-please):
 
